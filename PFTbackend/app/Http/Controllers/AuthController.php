@@ -14,9 +14,7 @@ use Tymon\JWTAuth\Exceptions\JWTException;
 
 class AuthController extends Controller
 {
-    // ---------------------------
-    // Register
-    // ---------------------------
+
     public function register(Request $request)
     {
         $request->validate([
@@ -26,8 +24,8 @@ class AuthController extends Controller
         ]);
 
         $user = User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
+            'name' => $request->name,
+            'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
 
@@ -36,13 +34,11 @@ class AuthController extends Controller
         return $this->respondWithToken($token, $user);
     }
 
-    // ---------------------------
-    // Login
-    // ---------------------------
+
     public function login(Request $request)
     {
         $request->validate([
-            'email'    => 'required|email',
+            'email' => 'required|email',
             'password' => 'required|string',
         ]);
 
@@ -60,22 +56,18 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Login successful',
-            'token'   => $token,
-            'user'    => $user
+            'token' => $token,
+            'user' => $user
         ]);
     }
 
-    // ---------------------------
-    // Profile
-    // ---------------------------
+
     public function profile()
     {
         return response()->json(auth()->user());
     }
 
-    // ---------------------------
-    // Logout
-    // ---------------------------
+
     public function logout()
     {
         JWTAuth::invalidate(JWTAuth::getToken());
@@ -83,18 +75,14 @@ class AuthController extends Controller
         return response()->json(['message' => 'Successfully logged out']);
     }
 
-    // ---------------------------
-    // Refresh Token
-    // ---------------------------
+
     public function refresh()
     {
         $newToken = JWTAuth::refresh(JWTAuth::getToken());
         return $this->respondWithToken($newToken, auth()->user());
     }
 
-    // ---------------------------
-    // Forgot Password
-    // ---------------------------
+
     public function forgotPassword(Request $request)
     {
         $request->validate([
@@ -103,19 +91,18 @@ class AuthController extends Controller
 
         $token = Str::random(60);
 
-        // Store token in password_resets table
+
         DB::table('password_resets')->updateOrInsert(
             ['email' => $request->email],
             [
-                'token'      => $token,
+                'token' => $token,
                 'created_at' => Carbon::now()
             ]
         );
 
-        // Reset link (frontend)
         $resetUrl = "http://localhost:3000/reset-password?token={$token}&email={$request->email}";
 
-        // Send mail
+
         Mail::send('emails.reset-password', ['url' => $resetUrl], function ($message) use ($request) {
             $message->to($request->email);
             $message->subject('Reset your password');
@@ -126,14 +113,11 @@ class AuthController extends Controller
         ]);
     }
 
-    // ---------------------------
-    // Reset Password
-    // ---------------------------
     public function resetPassword(Request $request)
     {
         $request->validate([
-            'email'    => 'required|email|exists:users,email',
-            'token'    => 'required|string',
+            'email' => 'required|email|exists:users,email',
+            'token' => 'required|string',
             'password' => 'required|string|min:6|confirmed',
         ]);
 
@@ -147,26 +131,24 @@ class AuthController extends Controller
         }
 
         // Update password
-        $user           = User::where('email', $request->email)->first();
+        $user = User::where('email', $request->email)->first();
         $user->password = Hash::make($request->password);
         $user->save();
 
-        // Delete reset token
+
         DB::table('password_resets')->where('email', $request->email)->delete();
 
         return response()->json(['message' => '✅ Password has been reset successfully.']);
     }
 
-    // ---------------------------
-    // Helper: Respond with Token
-    // ---------------------------
+
     protected function respondWithToken($token, $user = null)
     {
         return response()->json([
             'access_token' => $token,
-            'token_type'   => 'bearer',
-            'expires_in'   => JWTAuth::factory()->getTTL() * 60,
-            'user'         => $user
+            'token_type' => 'bearer',
+            'expires_in' => JWTAuth::factory()->getTTL() * 60,
+            'user' => $user
         ]);
     }
 }

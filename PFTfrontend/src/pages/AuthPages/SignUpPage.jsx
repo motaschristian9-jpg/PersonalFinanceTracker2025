@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import Swal from "sweetalert2";
-import api from "../../api/api"; // 👈 fixed path
+import api from "../../api/api";
+import { useGoogleLogin } from "@react-oauth/google";
 
 export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -39,12 +40,62 @@ export default function SignUpPage() {
       setTimeout(() => navigate("/login"), 1500);
     } catch (err) {
       if (err.response && err.response.data) {
-        Swal.fire("Error", err.response.data.message || "Registration failed", "error");
+        Swal.fire(
+          "Error",
+          err.response.data.message || "Registration failed",
+          "error"
+        );
       } else {
         Swal.fire("Error", "Something went wrong. Try again later.", "error");
       }
     }
   };
+
+  const loginWithGoogle = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        // Get user info from Google
+        const resUser = await fetch(
+          "https://www.googleapis.com/oauth2/v3/userinfo",
+          {
+            headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+          }
+        );
+        const userInfo = await resUser.json();
+
+        // Send user info to backend
+        const res = await api.post("/auth/google", {
+          email: userInfo.email,
+          name: userInfo.name,
+        });
+
+        localStorage.setItem("token", res.data.token);
+
+        Swal.fire({
+          icon: "success",
+          title: "Welcome!",
+          text: `Hello, ${res.data.user.name}`,
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      } catch (err) {
+        console.error(err);
+        Swal.fire({
+          icon: "error",
+          title: "Signup Failed",
+          text: "Could not sign up with Google. Please try again.",
+        });
+      }
+    },
+    onError: (err) => {
+      console.error(err);
+      Swal.fire({
+        icon: "error",
+        title: "Google Login Failed",
+        text: "Please try again.",
+      });
+    },
+  });
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -162,9 +213,7 @@ export default function SignUpPage() {
                 />
                 <button
                   type="button"
-                  onClick={() =>
-                    setShowConfirmPassword(!showConfirmPassword)
-                  }
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-3 top-9 text-gray-500"
                 >
                   {showConfirmPassword ? (
@@ -185,11 +234,12 @@ export default function SignUpPage() {
 
             {/* Alternative Sign Up */}
             <div className="space-y-2">
-              <p className="text-center text-gray-500 text-sm">
-                Or continue with
-              </p>
+              <p className="text-center text-gray-500 text-sm">Or</p>
               <div>
-                <button className="w-full border py-2 rounded-lg hover:bg-gray-50">
+                <button
+                  onClick={() => loginWithGoogle()}
+                  className="w-full border py-2 rounded-lg hover:bg-gray-50"
+                >
                   Continue with Google
                 </button>
               </div>

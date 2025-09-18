@@ -3,7 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
-import api from "../../api/api"; // import your api.js
+import api from "../../api/api";
+import { useGoogleLogin } from "@react-oauth/google";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -11,12 +12,10 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
-
     if (!email || !password) {
       Swal.fire({
         icon: "error",
@@ -26,11 +25,8 @@ export default function LoginPage() {
       });
       return;
     }
-
     setLoading(true);
-
     try {
-      // Call backend login API
       const response = await api.post(
         "/login",
         { email, password },
@@ -41,23 +37,17 @@ export default function LoginPage() {
           },
         }
       );
-
       if (response.data.token) {
         setLoading(false);
-
-        // ✅ Store token based on rememberMe
         const storage = rememberMe ? localStorage : sessionStorage;
         storage.setItem("token", response.data.token);
         storage.setItem("user", JSON.stringify(response.data.user));
-
         Swal.fire({
           icon: "success",
           title: "Login Successful!",
           text: `Welcome back, ${response.data.user?.name || "User"} 😊`,
           confirmButtonColor: "#10B981",
-        }).then(() => {
-          navigate("/dashboard");
-        });
+        }).then(() => navigate("/dashboard"));
       } else {
         setLoading(false);
         Swal.fire({
@@ -80,14 +70,42 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleLogin = () => {
-    Swal.fire({
-      icon: "info",
-      title: "Google Login",
-      text: "Google login clicked 🚀 (Integrate real OAuth here)",
-      confirmButtonColor: "#10B981",
-    });
-  };
+  const loginWithGoogle = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        const resUser = await fetch(
+          "https://www.googleapis.com/oauth2/v3/userinfo",
+          { headers: { Authorization: `Bearer ${tokenResponse.access_token}` } }
+        );
+        const userInfo = await resUser.json();
+        const res = await api.post("/auth/google/login", {
+          email: userInfo.email,
+        });
+        localStorage.setItem("token", res.data.token);
+        Swal.fire({
+          icon: "success",
+          title: "Welcome back!",
+          text: `Hello, ${res.data.user.name}`,
+          timer: 2000,
+          showConfirmButton: false,
+        }).then(() => navigate("/dashboard"));
+      } catch (err) {
+        Swal.fire({
+          icon: "error",
+          title: "Login Failed",
+          text:
+            err.response?.data?.message ||
+            "Could not log in with Google. Please try again.",
+        });
+      }
+    },
+    onError: () =>
+      Swal.fire({
+        icon: "error",
+        title: "Google Login Failed",
+        text: "Please try again.",
+      }),
+  });
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -186,13 +204,8 @@ export default function LoginPage() {
             <span className="text-sm text-gray-500">or</span>
             <hr className="flex-grow border-gray-300" />
           </div>
-
-          <button
-            onClick={handleGoogleLogin}
-            className="mt-4 w-full flex items-center justify-center gap-2 border border-gray-300 py-2 rounded-lg hover:bg-gray-50 transition"
-          >
-            <img src="/google-icon.svg" alt="Google" className="w-5 h-5" />
-            Continue with Google
+          <button onClick={() => loginWithGoogle()} className="google-btn">
+            Sign in with Google
           </button>
         </div>
 

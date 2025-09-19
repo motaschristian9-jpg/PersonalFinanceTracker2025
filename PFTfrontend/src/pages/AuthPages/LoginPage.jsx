@@ -25,6 +25,7 @@ export default function LoginPage() {
       });
       return;
     }
+
     setLoading(true);
     try {
       const response = await api.post(
@@ -37,17 +38,27 @@ export default function LoginPage() {
           },
         }
       );
+
       if (response.data.token) {
         setLoading(false);
+
+        // Choose storage based on rememberMe
         const storage = rememberMe ? localStorage : sessionStorage;
+
         storage.setItem("token", response.data.token);
         storage.setItem("user", JSON.stringify(response.data.user));
-        Swal.fire({
+
+        // Optional: store rememberMe flag in localStorage if you need it later
+        localStorage.setItem("rememberMe", rememberMe ? "true" : "false");
+
+        await Swal.fire({
           icon: "success",
           title: "Login Successful!",
           text: `Welcome back, ${response.data.user?.name || "User"} 😊`,
           confirmButtonColor: "#10B981",
-        }).then(() => navigate("/dashboard"));
+        });
+
+        navigate("/dashboard");
       } else {
         setLoading(false);
         Swal.fire({
@@ -81,7 +92,16 @@ export default function LoginPage() {
         const res = await api.post("/auth/google/login", {
           email: userInfo.email,
         });
-        localStorage.setItem("token", res.data.token);
+
+        // ✅ Remember Me logic
+        if (rememberMe) {
+          localStorage.setItem("token", res.data.token);
+          localStorage.setItem("user", JSON.stringify(res.data.user));
+        } else {
+          sessionStorage.setItem("token", res.data.token);
+          sessionStorage.setItem("user", JSON.stringify(res.data.user));
+        }
+
         Swal.fire({
           icon: "success",
           title: "Welcome back!",

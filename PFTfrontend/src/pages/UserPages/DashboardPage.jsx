@@ -1,4 +1,6 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+
 import {
   LayoutDashboard,
   List,
@@ -14,26 +16,42 @@ import {
   User,
   PlusCircle,
   MinusCircle,
-} from "lucide-react"
+} from "lucide-react";
 
 export default function Dashboard() {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const dropdownRef = useRef(null)
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  const navigate = useNavigate();
+  const handleLogout = () => {
+    // Clear both storages
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
+
+    // Navigate to login page
+    navigate("/login");
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setDropdownOpen(false)
+        setDropdownOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const menuItems = [
-    { label: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/dashboard" },
+    {
+      label: "Dashboard",
+      icon: <LayoutDashboard size={20} />,
+      path: "/dashboard",
+    },
     { label: "Transactions", icon: <List size={20} />, path: "/transactions" },
     { label: "Income", icon: <DollarSign size={20} />, path: "/income" },
     { label: "Expenses", icon: <CreditCard size={20} />, path: "/expenses" },
@@ -41,7 +59,7 @@ export default function Dashboard() {
     { label: "Savings", icon: <Target size={20} />, path: "/savings" },
     { label: "Reports", icon: <BarChart2 size={20} />, path: "/reports" },
     { label: "Settings", icon: <Settings size={20} />, path: "/settings" },
-  ]
+  ];
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -98,12 +116,18 @@ export default function Dashboard() {
 
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-40 bg-white border rounded shadow-md">
-                  <a href="/profile" className="flex items-center px-3 py-2 hover:bg-gray-100">
+                  <a
+                    href="/profile"
+                    className="flex items-center px-3 py-2 hover:bg-gray-100"
+                  >
                     <User size={16} className="mr-2" /> Profile
                   </a>
-                  <a href="/logout" className="flex items-center px-3 py-2 hover:bg-gray-100">
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center px-3 py-2 hover:bg-gray-100 w-full text-left"
+                  >
                     <LogOut size={16} className="mr-2" /> Logout
-                  </a>
+                  </button>
                 </div>
               )}
             </div>
@@ -215,7 +239,9 @@ export default function Dashboard() {
               <div className="bg-gray-100 rounded-full h-3 w-full mb-2">
                 <div className="bg-emerald-600 h-3 rounded-full w-2/3"></div>
               </div>
-              <p className="text-sm text-gray-600">Vacation Fund: 65% reached</p>
+              <p className="text-sm text-gray-600">
+                Vacation Fund: 65% reached
+              </p>
             </div>
             <div className="bg-white rounded-xl shadow p-4">
               <h3 className="font-semibold mb-2">Budget Categories</h3>
@@ -241,5 +267,5 @@ export default function Dashboard() {
         </footer>
       </div>
     </div>
-  )
+  );
 }

@@ -1,18 +1,24 @@
 import React, { useState } from "react";
 import { X, Loader2 } from "lucide-react";
 import Swal from "sweetalert2";
-import { addTransaction, addBudget, addGoal } from "../api/api";
+import { useAddTransaction, useAddBudget, useAddGoal } from "../api/queries";
 
 export default function ModalForm({
   isOpen,
   type,
   formData,
   setFormData,
+  editingId,
   onClose,
-  refetch, // refresh dashboard after success
+  onSubmit,
 }) {
+  // Hooks must always be at the top
   const [loading, setLoading] = useState(false);
+  const addTransactionMutation = useAddTransaction();
+  const addBudgetMutation = useAddBudget();
+  const addGoalMutation = useAddGoal();
 
+  // Early return if modal is closed
   if (!isOpen) return null;
 
   // Categories
@@ -31,87 +37,70 @@ export default function ModalForm({
     "Shopping",
     "Other",
   ];
+  const categories = type === "income" ? incomeCategories : expenseCategories;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      let payload;
+      let payload = {};
 
-      // --- Transactions ---
+      // Validate and prepare payload
       if (type === "income" || type === "expense") {
-        if (!formData.amount || !formData.date || !formData.category)
+        if (!formData.amount || !formData.transac_date || !formData.category) {
           throw new Error("Category, amount, and date are required.");
-
-        const finalCategory =
-          formData.category !== "Other"
-            ? formData.category
-            : formData.customCategory?.trim() || "Other";
+        }
 
         payload = {
-          type: type.charAt(0).toUpperCase() + type.slice(1), // Capitalize for backend
-          category: finalCategory,
+          type: type.charAt(0).toUpperCase() + type.slice(1),
+          category:
+            formData.category !== "Other"
+              ? formData.category
+              : formData.customCategory?.trim() || "Other",
           amount: Number(formData.amount),
-          transaction_date: formData.date, // matches Laravel field
+          transaction_date: formData.transac_date,
+          description: formData.description || "",
+          editingId: formData.editingId || null, // optional if editing
         };
-
-        await addTransaction(payload);
-
-        // --- Budgets ---
       } else if (type === "budget") {
         if (
           !formData.category ||
           !formData.amount ||
           !formData.start_date ||
           !formData.end_date
-        )
+        ) {
           throw new Error("All budget fields are required.");
-
-        const finalCategory =
-          formData.category !== "Other"
-            ? formData.category
-            : formData.customCategory?.trim() || "Other";
+        }
 
         payload = {
-          category: finalCategory,
+          category:
+            formData.category !== "Other"
+              ? formData.category
+              : formData.customCategory?.trim() || "Other",
           amount: Number(formData.amount),
           start_date: formData.start_date,
           end_date: formData.end_date,
         };
-
-        await addBudget(payload);
-
-        // --- Savings Goals ---
       } else if (type === "goal") {
-        if (!formData.title || !formData.target_amount)
+        if (!formData.title || !formData.target_amount) {
           throw new Error("Title and target amount are required.");
+        }
 
         payload = {
           title: formData.title,
           target_amount: Number(formData.target_amount),
           deadline: formData.deadline || null,
         };
-
-        await addGoal(payload);
       } else {
         throw new Error("Invalid form type");
       }
 
-      Swal.fire({
-        icon: "success",
-        title: "Success!",
-        text:
-          type === "income" || type === "expense"
-            ? "Transaction added successfully."
-            : type === "budget"
-            ? "Budget saved successfully."
-            : "Savings goal added successfully.",
-        confirmButtonColor: "#10B981",
-      });
+      
+      // Call parent onSubmit
+      await onSubmit(payload);
 
-      if (refetch) refetch();
-      onClose();
+      // Parent will handle closing the modal
     } catch (err) {
       console.error("Form submission error:", err);
 
@@ -131,8 +120,6 @@ export default function ModalForm({
       setLoading(false);
     }
   };
-
-  const categories = type === "income" ? incomeCategories : expenseCategories;
 
   return (
     <div className="fixed inset-0 z-50 flex justify-center items-center">
@@ -188,6 +175,17 @@ export default function ModalForm({
                 />
               )}
 
+              <label className="text-sm text-gray-500">Description</label>
+              <input
+                type="text"
+                placeholder="Description (optional)"
+                value={formData.description || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                className="border px-2 py-1 rounded"
+              />
+
               <label className="text-sm text-gray-500">Amount</label>
               <input
                 type="number"
@@ -203,9 +201,9 @@ export default function ModalForm({
               <label className="text-sm text-gray-500">Date</label>
               <input
                 type="date"
-                value={formData.date || ""}
+                value={formData.transac_date || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, date: e.target.value })
+                  setFormData({ ...formData, transac_date: e.target.value })
                 }
                 required
                 className="border px-2 py-1 rounded"
@@ -285,7 +283,7 @@ export default function ModalForm({
             </>
           )}
 
-          {/* Savings Goals */}
+          {/* Goals */}
           {type === "goal" && (
             <>
               <label className="text-sm text-gray-500">Title</label>

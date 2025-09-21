@@ -47,20 +47,28 @@ export const fetchProfile = () => api.get("/profile");
 
 // --- Transactions ---
 export const fetchTransactions = () => api.get("/dashboard/transactions");
-export const addTransaction = (data) =>
-  api.post("/dashboard/transactions", {
-    type: data.type === "income" ? "Income" : "Expense",
+
+export const addTransaction = (data) => {
+  return api.post("/dashboard/transactions", {
+    type: data.type?.toLowerCase() === "income" ? "Income" : "Expense",
     category: data.category === "Other" ? data.customCategory : data.category,
     amount: Number(data.amount),
-    transaction_date: data.date,
+    transaction_date: data.transaction_date,
+    description: data.description || "",
   });
-export const updateTransaction = (id, data) =>
-  api.put(`/dashboard/transactions/${id}`, data);
+};
+
+export const updateTransaction = (id, data) => {
+  // Use PUT with the transaction id
+  return api.put(`/dashboard/transactions/${id}`, data);
+};
+
 export const deleteTransaction = (id) =>
   api.delete(`/dashboard/transactions/${id}`);
 
 // --- Budgets ---
 export const fetchBudgets = () => api.get("/dashboard/budgets");
+
 export const addBudget = (data) =>
   api.post("/dashboard/budgets", {
     category: data.category === "Other" ? data.customCategory : data.category,
@@ -74,6 +82,7 @@ export const updateBudget = (id, data) =>
     category: data.category === "Other" ? data.customCategory : data.category,
     limit: Number(data.limit),
   });
+
 export const deleteBudget = (id) => api.delete(`/dashboard/budgets/${id}`);
 
 // --- Savings Goals ---

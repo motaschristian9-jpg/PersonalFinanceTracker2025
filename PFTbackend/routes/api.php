@@ -31,6 +31,9 @@ Route::middleware([JWTMiddleware::class])->group(function () {
     Route::prefix('dashboard')->group(function () {
         Route::get('transactions', [DashboardController::class, 'transactions']);
         Route::post('transactions', [DashboardController::class, 'storeTransaction']);
+        Route::delete('transactions/{id}', [DashboardController::class, 'deleteTransaction']);
+        Route::put('transactions/{id}', [DashboardController::class, 'updateTransaction']);
+
 
         Route::get('budgets', [DashboardController::class, 'budgets']);
         Route::post('budgets', [DashboardController::class, 'storeBudget']);

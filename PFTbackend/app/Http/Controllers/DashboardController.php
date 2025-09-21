@@ -28,6 +28,7 @@ class DashboardController extends Controller
             'category' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0',
             'transaction_date' => 'required|date',
+            'description' => 'nullable|string|max:500', // Added description
         ]);
 
         $transaction = Transaction::create([
@@ -36,6 +37,7 @@ class DashboardController extends Controller
             'category' => $request->category,
             'amount' => $request->amount,
             'transaction_date' => $request->transaction_date,
+            'description' => $request->description ?? '', // Store empty string if null
         ]);
 
         return response()->json([
@@ -43,6 +45,46 @@ class DashboardController extends Controller
             'transaction' => $transaction,
         ]);
     }
+
+    // Delete a transaction
+    public function deleteTransaction($id)
+    {
+        $transaction = Transaction::where('user_id', auth()->id())
+            ->where('transaction_id', $id) // use your actual primary key
+            ->first();
+
+
+        if (!$transaction) {
+            return response()->json(['message' => 'Transaction not found'], 404);
+        }
+
+        $transaction->delete();
+
+        return response()->json(['message' => 'Transaction deleted successfully']);
+    }
+
+    public function updateTransaction(Request $request, $id)
+    {
+        $transaction = Transaction::where('transaction_id', $id)->first();
+
+        if (!$transaction) {
+            return response()->json(['message' => 'Transaction not found'], 404);
+        }
+
+        $transaction->update([
+            'type' => $request->type,
+            'category' => $request->category,
+            'amount' => $request->amount,
+            'transaction_date' => $request->transaction_date,
+            'description' => $request->description,
+        ]);
+
+        return response()->json([
+            'message' => 'Transaction updated successfully',
+            'data' => $transaction
+        ]);
+    }
+
 
     // Get budgets for authenticated user
     public function budgets(Request $request)

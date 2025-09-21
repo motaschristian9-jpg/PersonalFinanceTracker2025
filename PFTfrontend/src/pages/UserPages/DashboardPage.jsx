@@ -34,6 +34,7 @@ import ModalForm from "../../components/ModalForm";
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
+  const [editingId, setEditingId] = useState(null);
 
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
@@ -42,7 +43,7 @@ export default function Dashboard() {
 
   const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444"];
 
-  // Queries
+  // ================= Queries =================
   const { data: user, isLoading: profileLoading } = useQuery({
     queryKey: ["profile"],
     queryFn: async () => (await fetchProfile()).data,
@@ -75,7 +76,13 @@ export default function Dashboard() {
     goalsLoading ||
     reportsLoading;
 
-  // Mutations
+  // ================= Mutations =================
+  const addTransactionMutation = useMutation({
+    mutationFn: addTransaction,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+  });
+
   const transactionMutation = useMutation({
     mutationFn: addTransaction,
     onSuccess: () => queryClient.invalidateQueries(["transactions", "reports"]),
@@ -91,43 +98,58 @@ export default function Dashboard() {
     onSuccess: () => queryClient.invalidateQueries(["goals"]),
   });
 
-  // Modal handlers
+  // ================= Modal Handlers =================
   const handleOpenModal = (type) => {
-    setModalType(type);
-    setFormData({});
+    setModalType(type); // "income", "expense", etc.
+    setFormData({
+      category: "",
+      customCategory: "",
+      amount: "",
+      description: "",
+      transac_date: "",
+      title: "",
+      target_amount: "",
+      deadline: "",
+    });
     setModalOpen(true);
   };
 
-  const handleCloseModal = () => {
-    setModalOpen(false);
-  };
+  const handleCloseModal = () => setModalOpen(false);
 
   const handleSubmit = async (data) => {
     try {
       let message = "";
 
       if (modalType === "income" || modalType === "expense") {
-        await transactionMutation.mutateAsync({
+        const txData = {
           type: modalType === "income" ? "Income" : "Expense",
           category:
             data.category === "Other" ? data.customCategory : data.category,
           amount: parseFloat(data.amount),
-          transaction_date: data.date,
-        });
+          transaction_date: data.transaction_date,
+          description: data.description || "",
+        };
+
+        // Always add new transaction (no editing in dashboard)
+        await addTransactionMutation.mutateAsync(txData);
         message = modalType === "income" ? "Income added!" : "Expense added!";
       } else if (modalType === "budget") {
-        await budgetMutation.mutateAsync({
+        const budgetData = {
           category:
             data.category === "Other" ? data.customCategory : data.category,
-          limit: Number(data.limit),
-        });
+          limit: Number(data.limit || data.amount),
+          start_date: data.start_date,
+          end_date: data.end_date,
+        };
+        await budgetMutation.mutateAsync(budgetData);
         message = "Budget set!";
       } else if (modalType === "goal") {
-        await goalMutation.mutateAsync({
+        const goalData = {
           title: data.title,
           target_amount: Number(data.target_amount),
           deadline: data.deadline || null,
-        });
+        };
+        await goalMutation.mutateAsync(goalData);
         message = "Savings goal added!";
       }
 
@@ -144,7 +166,9 @@ export default function Dashboard() {
       Swal.fire({
         icon: "error",
         title: "Oops!",
-        text: "Something went wrong. Please try again.",
+        text:
+          error.response?.data?.message ||
+          "Something went wrong. Please try again.",
         confirmButtonColor: "#EF4444",
       });
     }
@@ -158,9 +182,9 @@ export default function Dashboard() {
     );
   }
 
-  // Chart data
+  // ================= Chart Data =================
   const expenseData = transactions
-    .filter((t) => t.type && t.type.toLowerCase() === "expense")
+    .filter((t) => t.type?.toLowerCase() === "expense")
     .reduce((acc, tx) => {
       const existing = acc.find((item) => item.name === tx.category);
       if (existing) existing.value += parseFloat(tx.amount);
@@ -178,6 +202,7 @@ export default function Dashboard() {
       ]
     : [];
 
+  // ================= Render =================
   return (
     <DashboardLayout>
       {/* Welcome */}
@@ -222,27 +247,30 @@ export default function Dashboard() {
       <section className="grid md:grid-cols-2 gap-6 my-4">
         <div className="bg-white p-4 rounded-xl shadow h-90">
           <h3 className="font-semibold mb-2">Expense Breakdown</h3>
-          <ResponsiveContainer width="100%" height="90%">
-            <RePieChart>
-              <Pie
-                data={expenseData}
-                cx="50%"
-                cy="50%"
-                outerRadius={80}
-                dataKey="value"
-                label
-              >
-                {expenseData.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={COLORS[index % COLORS.length]}
-                  />
-                ))}
-              </Pie>
-              <Tooltip />
-            </RePieChart>
-          </ResponsiveContainer>
+          <div style={{ width: "100%", height: 300 }}>
+            <ResponsiveContainer>
+              <RePieChart>
+                <Pie
+                  data={expenseData}
+                  dataKey="value"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  label
+                >
+                  {expenseData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </RePieChart>
+            </ResponsiveContainer>
+          </div>
         </div>
+
         <div className="bg-white p-4 rounded-xl shadow h-90">
           <h3 className="font-semibold mb-2">Income vs Expenses</h3>
           <ResponsiveContainer width="100%" height="90%">
@@ -293,6 +321,7 @@ export default function Dashboard() {
         type={modalType}
         formData={formData}
         setFormData={setFormData}
+        editingId={editingId}
         onClose={handleCloseModal}
         refetch={() =>
           queryClient.invalidateQueries([
@@ -336,8 +365,6 @@ export default function Dashboard() {
             )}
           </tbody>
         </table>
-
-        {/* Link to full transactions page */}
         <div className="mt-3 text-right">
           <Link
             to="/transactions"
@@ -398,52 +425,44 @@ export default function Dashboard() {
           {(() => {
             const notifications = [];
 
-            // Budget notifications
             budgets.forEach((b) => {
               const percentSpent = (b.spent / b.limit) * 100;
-
-              if (percentSpent >= 100) {
+              if (percentSpent >= 100)
                 notifications.push({
                   id: `budget-${b.id}-over`,
                   message: `⚠️ You have overspent your ${b.category} budget!`,
                 });
-              } else if (percentSpent >= 80) {
+              else if (percentSpent >= 80)
                 notifications.push({
                   id: `budget-${b.id}-warn`,
                   message: `⚠️ You have used ${Math.floor(
                     percentSpent
                   )}% of your ${b.category} budget.`,
                 });
-              }
             });
 
-            // Savings goal notifications
             goals.forEach((g) => {
               const progress = (g.current_amount / g.target_amount) * 100;
-
-              if (progress >= 100) {
+              if (progress >= 100)
                 notifications.push({
                   id: `goal-${g.goal_id}-complete`,
                   message: `🎉 You’ve reached your savings goal: ${g.title}!`,
                 });
-              } else if (progress >= 80) {
+              else if (progress >= 80)
                 notifications.push({
                   id: `goal-${g.goal_id}-high`,
                   message: `🎯 You’re ${Math.floor(progress)}% of the way to ${
                     g.title
                   }. Almost there!`,
                 });
-              } else if (progress >= 50) {
+              else if (progress >= 50)
                 notifications.push({
                   id: `goal-${g.goal_id}-mid`,
                   message: `🎯 You’ve reached 50% of ${g.title}. Keep going!`,
                 });
-              }
             });
 
-            if (notifications.length === 0) {
-              return <li>No notifications</li>;
-            }
+            if (notifications.length === 0) return <li>No notifications</li>;
 
             return notifications.map((n) => <li key={n.id}>{n.message}</li>);
           })()}

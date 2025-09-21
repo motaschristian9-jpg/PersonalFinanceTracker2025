@@ -1,48 +1,244 @@
+import { useState } from "react";
 import DashboardLayout from "../../layouts/DashboardLayout";
-import { PlusCircle, MinusCircle, Edit, Trash } from "lucide-react";
+import { PlusCircle, MinusCircle, Edit, Trash, Loader2 } from "lucide-react";
+import ModalForm from "../../components/ModalForm";
+import Swal from "sweetalert2";
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
+import {
+  fetchTransactions,
+  addTransaction,
+  updateTransaction,
+  deleteTransaction,
+} from "../../api/api";
 
 export default function Transactions() {
+  const queryClient = useQueryClient();
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalType, setModalType] = useState(""); // 'income' or 'expense'
+  const [formData, setFormData] = useState({});
+  const [editingId, setEditingId] = useState(null); // track editing transaction
+  const [filterType, setFilterType] = useState("all"); // 'all', 'income', 'expense'
+  const [searchText, setSearchText] = useState(""); // description search
+
+  // ================= Queries =================
+  const { data: transactions = [], isLoading } = useQuery({
+    queryKey: ["transactions"],
+    queryFn: async () => (await fetchTransactions()).data,
+  });
+
+  // ================= Mutations =================
+  const addTransactionMutation = useMutation({
+    mutationFn: addTransaction,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+  });
+
+  const updateTransactionMutation = useMutation({
+    mutationFn: ({ id, data }) => updateTransaction(id, data),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+  });
+
+  const deleteTransactionMutation = useMutation({
+    mutationFn: (id) => deleteTransaction(id),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+  });
+
+  // ================= Modal Handlers =================
+  const handleOpenModal = (type, transaction = null) => {
+    setModalType(type);
+
+    if (transaction) {
+      const txId = transaction.transaction_id;
+      setEditingId(txId);
+
+      setFormData({
+        category: transaction.category,
+        customCategory:
+          transaction.category === "Other"
+            ? transaction.customCategory || ""
+            : "",
+        amount: transaction.amount,
+        description: transaction.description || "",
+        transac_date: transaction.transaction_date, // will be mapped correctly in handleSubmit
+      });
+    } else {
+      setEditingId(null);
+      setFormData({
+        category: "",
+        customCategory: "",
+        amount: "",
+        description: "",
+        transac_date: "",
+        title: "",
+        target_amount: "",
+        deadline: "",
+      });
+    }
+
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setEditingId(null);
+  };
+
+  const handleSubmit = async (data) => {
+    try {
+      const txData = {
+        type: modalType === "income" ? "Income" : "Expense",
+        category:
+          data.category === "Other" ? data.customCategory : data.category,
+        amount: Number(data.amount),
+        transaction_date: data.transaction_date, // maps to backend
+        description: data.description || "",
+      };
+
+      if (editingId) {
+        // Update transaction using PUT
+        await updateTransactionMutation.mutateAsync({
+          id: editingId,
+          data: txData,
+        });
+
+        Swal.fire({
+          icon: "success",
+          title: "Success",
+          text: "Transaction updated!",
+          confirmButtonColor: "#10B981",
+        });
+      } else {
+        // Add new transaction
+        await addTransactionMutation.mutateAsync(txData);
+
+        Swal.fire({
+          icon: "success",
+          title: "Success",
+          text: modalType === "income" ? "Income added!" : "Expense added!",
+          confirmButtonColor: "#10B981",
+        });
+      }
+
+      setModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      Swal.fire({
+        icon: "error",
+        title: "Oops!",
+        text:
+          error.response?.data?.message ||
+          "Something went wrong. Please try again.",
+        confirmButtonColor: "#EF4444",
+      });
+    }
+  };
+
+  const handleDelete = (id) => {
+    Swal.fire({
+      title: "Are you sure?",
+      text: "This transaction will be deleted permanently!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#EF4444",
+      cancelButtonColor: "#10B981",
+      confirmButtonText: "Yes, delete it!",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        deleteTransactionMutation.mutate(id, {
+          onSuccess: () => {
+            Swal.fire("Deleted!", "Transaction has been deleted.", "success");
+          },
+          onError: (error) => {
+            Swal.fire(
+              "Error!",
+              error.response?.data?.message || "Failed to delete transaction.",
+              "error"
+            );
+          },
+        });
+      }
+    });
+  };
+
+  // ================= Filtered Transactions =================
+  const filteredTransactions = transactions.filter((tx) => {
+    const typeMatch =
+      filterType === "all" ? true : tx.type?.toLowerCase() === filterType;
+    const descMatch = tx.description
+      ?.toLowerCase()
+      .includes(searchText.toLowerCase());
+    return typeMatch && descMatch;
+  });
+
+  // ================= Totals =================
+  const totalIncome = transactions
+    .filter((t) => t.type?.toLowerCase() === "income")
+    .reduce((acc, t) => acc + Number(t.amount), 0);
+
+  const totalExpenses = transactions
+    .filter((t) => t.type?.toLowerCase() === "expense")
+    .reduce((acc, t) => acc + Number(t.amount), 0);
+
+  const netBalance = totalIncome - totalExpenses;
+
+  if (isLoading)
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center p-10">
+          <Loader2 className="w-10 h-10 animate-spin text-emerald-600 mb-4" />
+          <p className="text-gray-600 text-lg">Loading transactions...</p>
+        </div>
+      </DashboardLayout>
+    );
+
   return (
     <DashboardLayout>
       {/* Page Title & Quick Actions */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">📜 Transactions</h1>
         <div className="flex space-x-3">
-          <button className="flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
+          <button
+            className="flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition"
+            onClick={() => handleOpenModal("income")}
+          >
             <PlusCircle className="mr-2 h-5 w-5" /> Add Income
           </button>
-          <button className="flex items-center px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition">
+          <button
+            className="flex items-center px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+            onClick={() => handleOpenModal("expense")}
+          >
             <MinusCircle className="mr-2 h-5 w-5" /> Add Expense
           </button>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white shadow rounded-lg p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Filter & Search */}
+      <div className="mb-4 flex flex-col md:flex-row md:items-center md:space-x-4 space-y-2 md:space-y-0">
+        <div className="flex items-center space-x-3">
+          <span className="text-gray-600">Filter by Type:</span>
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          >
+            <option value="all">All</option>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+        </div>
+
+        <div className="flex items-center space-x-3">
+          <span className="text-gray-600">Search Description:</span>
           <input
             type="text"
-            placeholder="🔍 Search transactions..."
-            className="border rounded-lg px-3 py-2 w-full"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder="Search..."
+            className="border px-3 py-2 rounded w-full md:w-64 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
-          <select className="border rounded-lg px-3 py-2 w-full">
-            <option>Date Range</option>
-            <option>This Week</option>
-            <option>This Month</option>
-            <option>Custom</option>
-          </select>
-          <select className="border rounded-lg px-3 py-2 w-full">
-            <option>All Categories</option>
-            <option>Food</option>
-            <option>Transport</option>
-            <option>Rent</option>
-            <option>Salary</option>
-          </select>
-          <select className="border rounded-lg px-3 py-2 w-full">
-            <option>All Types</option>
-            <option>Income</option>
-            <option>Expense</option>
-          </select>
         </div>
       </div>
 
@@ -60,36 +256,57 @@ export default function Transactions() {
             </tr>
           </thead>
           <tbody>
-            <tr className="hover:bg-gray-50">
-              <td className="py-3 px-4 border-b">2025-09-18</td>
-              <td className="py-3 px-4 border-b">Food</td>
-              <td className="py-3 px-4 border-b">Lunch</td>
-              <td className="py-3 px-4 border-b text-red-500">- ₱250</td>
-              <td className="py-3 px-4 border-b">Expense</td>
-              <td className="py-3 px-4 border-b text-right space-x-2">
-                <button className="text-blue-500 hover:text-blue-700">
-                  <Edit size={18} />
-                </button>
-                <button className="text-red-500 hover:text-red-700">
-                  <Trash size={18} />
-                </button>
-              </td>
-            </tr>
-            <tr className="hover:bg-gray-50">
-              <td className="py-3 px-4 border-b">2025-09-17</td>
-              <td className="py-3 px-4 border-b">Salary</td>
-              <td className="py-3 px-4 border-b">Monthly Pay</td>
-              <td className="py-3 px-4 border-b text-green-600">+ ₱20,000</td>
-              <td className="py-3 px-4 border-b">Income</td>
-              <td className="py-3 px-4 border-b text-right space-x-2">
-                <button className="text-blue-500 hover:text-blue-700">
-                  <Edit size={18} />
-                </button>
-                <button className="text-red-500 hover:text-red-700">
-                  <Trash size={18} />
-                </button>
-              </td>
-            </tr>
+            {filteredTransactions.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="text-center py-4 text-gray-500">
+                  No transactions found.
+                </td>
+              </tr>
+            ) : (
+              filteredTransactions.slice(0, 20).map((tx) => {
+                const txId = tx.id || tx._id || tx.transaction_id; // fallback if id is missing
+                return (
+                  <tr key={txId} className="hover:bg-gray-50">
+                    <td className="py-3 px-4 border-b">
+                      {tx.transaction_date
+                        ? new Date(tx.transaction_date).toLocaleDateString()
+                        : "-"}
+                    </td>
+                    <td className="py-3 px-4 border-b">{tx.category || "-"}</td>
+                    <td className="py-3 px-4 border-b">
+                      {tx.description || "-"}
+                    </td>
+                    <td
+                      className={`py-3 px-4 border-b ${
+                        tx.type?.toLowerCase() === "income"
+                          ? "text-green-600"
+                          : "text-red-500"
+                      }`}
+                    >
+                      {tx.type?.toLowerCase() === "income" ? "+" : "-"} ₱
+                      {Number(tx.amount || 0).toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 border-b">{tx.type || "-"}</td>
+                    <td className="py-3 px-4 border-b text-right space-x-2">
+                      <button
+                        className="text-blue-500 hover:text-blue-700"
+                        onClick={() =>
+                          handleOpenModal(tx.type?.toLowerCase(), tx)
+                        }
+                      >
+                        <Edit size={18} />
+                      </button>
+                      <button
+                        className="text-red-500 hover:text-red-700"
+                        onClick={() => handleDelete(txId)}
+                      >
+                        <Trash size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
@@ -98,17 +315,34 @@ export default function Transactions() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
         <div className="bg-white p-6 rounded-lg shadow text-center">
           <h3 className="text-gray-500">💰 Total Income</h3>
-          <p className="text-2xl font-bold text-green-600">₱20,000</p>
+          <p className="text-2xl font-bold text-green-600">
+            ₱{totalIncome.toLocaleString()}
+          </p>
         </div>
         <div className="bg-white p-6 rounded-lg shadow text-center">
           <h3 className="text-gray-500">💸 Total Expenses</h3>
-          <p className="text-2xl font-bold text-red-500">₱250</p>
+          <p className="text-2xl font-bold text-red-500">
+            ₱{totalExpenses.toLocaleString()}
+          </p>
         </div>
         <div className="bg-white p-6 rounded-lg shadow text-center">
           <h3 className="text-gray-500">🏦 Net Balance</h3>
-          <p className="text-2xl font-bold text-emerald-600">₱19,750</p>
+          <p className="text-2xl font-bold text-emerald-600">
+            ₱{netBalance.toLocaleString()}
+          </p>
         </div>
       </div>
+
+      {/* Modal Form */}
+      <ModalForm
+        isOpen={modalOpen}
+        type={modalType}
+        formData={formData}
+        setFormData={setFormData}
+        editingId={editingId}
+        onClose={handleCloseModal}
+        onSubmit={handleSubmit}
+      />
     </DashboardLayout>
   );
 }

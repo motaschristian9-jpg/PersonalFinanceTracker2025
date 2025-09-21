@@ -4,14 +4,28 @@ import "./index.css";
 import App from "./App.jsx";
 
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const clientId =
   "974205201861-gsbf234jp3tso8ffdmdi945fft1o0eu8.apps.googleusercontent.com";
 
+// configure query client with default caching/stale times
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes fresh
+      cacheTime: 1000 * 60 * 30, // 30 minutes in cache
+      refetchOnWindowFocus: false, // don’t refetch just because window focused
+    },
+  },
+});
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <GoogleOAuthProvider clientId={clientId}>
-      <App />
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
     </GoogleOAuthProvider>
   </StrictMode>
 );

@@ -5,14 +5,14 @@ import LoginPage from "./pages/AuthPages/LoginPage";
 import ForgotPasswordPage from "./pages/AuthPages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/AuthPages/ResetPasswordPage";
 import Dashboard from "./pages/UserPages/DashboardPage";
-import Transactions from "./pages/UserPages/TransactionsPage"; // ✅ Import Transactions page
-import Income from "./pages/UserPages/IncomePage"; // ✅ Import Income page
-import Expenses from "./pages/UserPages/ExpensesPage"; // ✅ Import Expenses page
-import Budget from "./pages/UserPages/BudgetPage"; // ✅ Import Budgets page
-import Savings from "./pages/UserPages/Savings"; // ✅ Import Savings page
-import Reports from "./pages/UserPages/ReportsPage"; // ✅ Import Reports page
-import Settings from "./pages/UserPages/Settings"; // ✅ Import Settings page
-import Profile from "./pages/UserPages/ProfilePage"; // ✅ Import Profile page
+import Transactions from "./pages/UserPages/TransactionsPage";
+import Income from "./pages/UserPages/IncomePage";
+import Expenses from "./pages/UserPages/ExpensesPage";
+import Budget from "./pages/UserPages/BudgetPage";
+import Savings from "./pages/UserPages/Savings";
+import Reports from "./pages/UserPages/ReportsPage";
+import Settings from "./pages/UserPages/Settings";
+import Profile from "./pages/UserPages/ProfilePage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PublicRoute from "./components/PublicRoute";
 
@@ -21,128 +21,38 @@ function App() {
     <Router>
       <Routes>
         {/* Public Routes */}
-        <Route
-          path="/"
-          element={
-            <PublicRoute>
-              <Landing />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/signup"
-          element={
-            <PublicRoute>
-              <SignUpPage />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/login"
-          element={
-            <PublicRoute>
-              <LoginPage />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/forgot-password"
-          element={
-            <PublicRoute>
-              <ForgotPasswordPage />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/reset-password"
-          element={
-            <PublicRoute>
-              <ResetPasswordPage />
-            </PublicRoute>
-          }
-        />
+        {[
+          { path: "/", element: <Landing /> },
+          { path: "/signup", element: <SignUpPage /> },
+          { path: "/login", element: <LoginPage /> },
+          { path: "/forgot-password", element: <ForgotPasswordPage /> },
+          { path: "/reset-password", element: <ResetPasswordPage /> },
+        ].map((route) => (
+          <Route
+            key={route.path}
+            path={route.path}
+            element={<PublicRoute>{route.element}</PublicRoute>}
+          />
+        ))}
 
         {/* Protected Routes */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/transactions"
-          element={
-            <ProtectedRoute>
-              <Transactions />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/income"
-          element={
-            <ProtectedRoute>
-              <Income />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/expenses"
-          element={
-            <ProtectedRoute>
-              <Expenses />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/budgets"
-          element={
-            <ProtectedRoute>
-              <Budget />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/savings"
-          element={
-            <ProtectedRoute>
-              <Savings />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/reports"
-          element={
-            <ProtectedRoute>
-              <Reports />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <Settings />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
-        {/* Add more protected routes for Expenses, Budgets, Savings, Reports, Settings as needed */}
+        {[
+          { path: "/dashboard", element: <Dashboard /> },
+          { path: "/transactions", element: <Transactions /> },
+          { path: "/income", element: <Income /> },
+          { path: "/expenses", element: <Expenses /> },
+          { path: "/budgets", element: <Budget /> },
+          { path: "/savings", element: <Savings /> },
+          { path: "/reports", element: <Reports /> },
+          { path: "/settings", element: <Settings /> },
+          { path: "/profile", element: <Profile /> },
+        ].map((route) => (
+          <Route
+            key={route.path}
+            path={route.path}
+            element={<ProtectedRoute>{route.element}</ProtectedRoute>}
+          />
+        ))}
       </Routes>
     </Router>
   );

@@ -31,9 +31,12 @@ Route::middleware([JWTMiddleware::class])->group(function () {
     Route::prefix('dashboard')->group(function () {
         Route::get('transactions', [DashboardController::class, 'transactions']);
         Route::post('transactions', [DashboardController::class, 'storeTransaction']);
-        
+
         Route::get('budgets', [DashboardController::class, 'budgets']);
+        Route::post('budgets', [DashboardController::class, 'storeBudget']);
+
         Route::get('savings-goals', [DashboardController::class, 'goals']);
+        Route::post('savings-goals', [DashboardController::class, 'storeGoal']);
         Route::get('reports', [DashboardController::class, 'reports']);
     });
 });

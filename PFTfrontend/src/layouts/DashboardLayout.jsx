@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query"; // <-- import this
+import ModalForm from "../components/ModalForm";
 import {
   LayoutDashboard,
   List,
@@ -16,6 +18,7 @@ import {
 } from "lucide-react";
 
 export default function DashboardLayout({ children }) {
+  const queryClient = useQueryClient(); // <-- initialize queryClient
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     const saved = localStorage.getItem("sidebarOpen");
     return saved !== null ? JSON.parse(saved) : true;
@@ -28,10 +31,18 @@ export default function DashboardLayout({ children }) {
   const location = useLocation();
 
   const handleLogout = () => {
+    // Remove local/session storage
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     sessionStorage.removeItem("token");
     sessionStorage.removeItem("user");
+
+    // Clear all React Query cache
+    queryClient.clear(); // <-- this will remove all cached data
+
+    // Optionally reset active queries if you want
+    // queryClient.resetQueries();
+
     navigate("/login");
   };
 
@@ -75,7 +86,6 @@ export default function DashboardLayout({ children }) {
           sidebarOpen ? "w-64" : "w-20"
         } sticky top-0 h-screen border-r bg-white text-gray-800 p-4 flex flex-col transition-all`}
       >
-        {/* Brand + Collapse Button */}
         <div className="flex items-center justify-between mb-6">
           <span className="text-2xl font-bold text-emerald-600">
             {sidebarOpen ? "MoneyTracker" : "MT"}
@@ -88,14 +98,13 @@ export default function DashboardLayout({ children }) {
           </button>
         </div>
 
-        {/* Navigation */}
         <nav className="flex flex-col space-y-2">
           {menuItems.map((item, idx) => {
             const isActive = location.pathname === item.path;
             return (
-              <a
+              <Link
                 key={idx}
-                href={item.path}
+                to={item.path}
                 className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors relative
                   ${
                     isActive
@@ -103,21 +112,18 @@ export default function DashboardLayout({ children }) {
                       : "text-gray-700 hover:text-emerald-600 hover:bg-gray-50"
                   }`}
               >
-                {/* Active Indicator Bar */}
                 {isActive && (
                   <span className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-600 rounded-r"></span>
                 )}
                 {item.icon}
                 {sidebarOpen && <span>{item.label}</span>}
-              </a>
+              </Link>
             );
           })}
         </nav>
       </aside>
 
-      {/* Main Section */}
       <div className="flex-1 flex flex-col">
-        {/* Top Bar */}
         <header className="flex items-center justify-between bg-white border-b px-6 py-3">
           <div className="flex items-center bg-gray-100 rounded-lg px-3 py-1">
             <Search className="text-gray-500 mr-2" size={18} />
@@ -132,19 +138,19 @@ export default function DashboardLayout({ children }) {
             <Bell className="text-gray-600 cursor-pointer" />
             <div className="relative" ref={dropdownRef}>
               <img
-                src="https://via.placeholder.com/40"
+                src="https://picsum.photos/40"
                 alt="User"
                 className="w-9 h-9 rounded-full cursor-pointer"
                 onClick={() => setDropdownOpen(!dropdownOpen)}
               />
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-40 bg-white border rounded shadow-md">
-                  <a
-                    href="/profile"
+                  <Link
+                    to="/profile"
                     className="flex items-center px-3 py-2 hover:bg-gray-100"
                   >
                     <User size={16} className="mr-2" /> Profile
-                  </a>
+                  </Link>
                   <button
                     onClick={handleLogout}
                     className="flex items-center px-3 py-2 hover:bg-gray-100 w-full text-left"
@@ -157,10 +163,8 @@ export default function DashboardLayout({ children }) {
           </div>
         </header>
 
-        {/* Body */}
         <main className="flex-1 p-6 space-y-6">{children}</main>
 
-        {/* Footer */}
         <footer className="border-t bg-gray-50 py-6 px-4 text-center text-sm text-gray-500">
           © 2025 MoneyTracker · Follow us:
           <span className="ml-2">🌐 📘 🐦 📸</span>

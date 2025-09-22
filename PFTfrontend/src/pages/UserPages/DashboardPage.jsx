@@ -305,7 +305,7 @@ export default function Dashboard() {
           className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600"
           onClick={() => handleOpenModal("budget")}
         >
-          <PieChart size={18} className="mr-2" /> Set Budget
+          <PieChart size={18} className="mr-2" /> Add New Budget
         </button>
         <button
           className="flex items-center px-4 py-2 bg-purple-500 text-white rounded-lg shadow hover:bg-purple-600"

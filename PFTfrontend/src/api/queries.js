@@ -11,9 +11,12 @@ import {
   updateTransaction,
   updateBudget,
   updateGoal,
+  deleteTransaction,
+  deleteBudget,
+  deleteGoal,
 } from "./api";
 
-// Helper for queries
+// ------------------ HELPER ------------------
 const useFetch = (key, fetchFn) =>
   useQuery({
     queryKey: [key],
@@ -81,6 +84,34 @@ export const useUpdateGoal = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }) => updateGoal(id, data),
+    onSuccess: () => queryClient.invalidateQueries(["goals"]),
+  });
+};
+
+// ------------------ DELETE MUTATIONS ------------------
+export const useDeleteTransaction = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteTransaction,
+    onSuccess: () => {
+      queryClient.invalidateQueries(["transactions"]);
+      queryClient.invalidateQueries(["reports"]);
+    },
+  });
+};
+
+export const useDeleteBudget = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteBudget,
+    onSuccess: () => queryClient.invalidateQueries(["budgets"]),
+  });
+};
+
+export const useDeleteGoal = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteGoal,
     onSuccess: () => queryClient.invalidateQueries(["goals"]),
   });
 };

@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { X, Loader2 } from "lucide-react";
 import Swal from "sweetalert2";
-import { useAddTransaction, useAddBudget, useAddGoal } from "../api/queries";
 
 export default function ModalForm({
   isOpen,
@@ -9,26 +8,15 @@ export default function ModalForm({
   formData,
   setFormData,
   editingId,
+  selectedBudget = null, // optional prop for detailed budget modal
   onClose,
   onSubmit,
 }) {
-  // Hooks must always be at the top
   const [loading, setLoading] = useState(false);
-  const addTransactionMutation = useAddTransaction();
-  const addBudgetMutation = useAddBudget();
-  const addGoalMutation = useAddGoal();
+  const [expenseAmount, setExpenseAmount] = useState(""); // new state for budget expense
 
-  // Early return if modal is closed
   if (!isOpen) return null;
 
-  // Categories
-  const incomeCategories = [
-    "Salary",
-    "Freelance",
-    "Investment",
-    "Gift",
-    "Other",
-  ];
   const expenseCategories = [
     "Food",
     "Transport",
@@ -37,7 +25,6 @@ export default function ModalForm({
     "Shopping",
     "Other",
   ];
-  const categories = type === "income" ? incomeCategories : expenseCategories;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -46,61 +33,56 @@ export default function ModalForm({
     try {
       let payload = {};
 
-      // Validate and prepare payload
       if (type === "income" || type === "expense") {
-        if (!formData.amount || !formData.transac_date || !formData.category) {
+        if (
+          !formData.amount ||
+          !formData.transaction_date ||
+          !formData.category
+        ) {
           throw new Error("Category, amount, and date are required.");
         }
 
         payload = {
           type: type.charAt(0).toUpperCase() + type.slice(1),
-          category:
-            formData.category !== "Other"
-              ? formData.category
-              : formData.customCategory?.trim() || "Other",
+          category: formData.category,
           amount: Number(formData.amount),
-          transaction_date: formData.transac_date,
+          transaction_date: formData.transaction_date,
           description: formData.description || "",
-          editingId: formData.editingId || null, // optional if editing
+          editingId: editingId || null,
         };
       } else if (type === "budget") {
-        if (
-          !formData.category ||
-          !formData.amount ||
-          !formData.start_date ||
-          !formData.end_date
-        ) {
-          throw new Error("All budget fields are required.");
+        if (selectedBudget && expenseAmount) {
+          // Add expense to selected budget
+          payload = {
+            budget_id: selectedBudget.budget_id,
+            amount: Number(expenseAmount),
+          };
+        } else {
+          // Create or edit budget
+          if (
+            !formData.category ||
+            !formData.amount ||
+            !formData.start_date ||
+            !formData.end_date
+          ) {
+            throw new Error("All budget fields are required.");
+          }
+          payload = {
+            category: formData.category,
+            amount: Number(formData.amount),
+            start_date: formData.start_date,
+            end_date: formData.end_date,
+            editingId: editingId || null,
+          };
         }
-
-        payload = {
-          category:
-            formData.category !== "Other"
-              ? formData.category
-              : formData.customCategory?.trim() || "Other",
-          amount: Number(formData.amount),
-          start_date: formData.start_date,
-          end_date: formData.end_date,
-        };
-      } else if (type === "goal") {
-        if (!formData.title || !formData.target_amount) {
-          throw new Error("Title and target amount are required.");
-        }
-
-        payload = {
-          title: formData.title,
-          target_amount: Number(formData.target_amount),
-          deadline: formData.deadline || null,
-        };
       } else {
         throw new Error("Invalid form type");
       }
 
-      
-      // Call parent onSubmit
-      await onSubmit(payload);
+      await onSubmit(payload); // parent handles API call and closing modal
 
-      // Parent will handle closing the modal
+      // Clear expense input if used
+      if (expenseAmount) setExpenseAmount("");
     } catch (err) {
       console.error("Form submission error:", err);
 
@@ -135,12 +117,14 @@ export default function ModalForm({
         <h2 className="text-xl font-bold mb-4 capitalize">
           {type === "income" && "Add Income"}
           {type === "expense" && "Add Expense"}
-          {type === "budget" && "Set Budget"}
-          {type === "goal" && "Add Savings Goal"}
+          {type === "budget" &&
+            (selectedBudget
+              ? `Budget: ${selectedBudget.category}`
+              : "Set Budget")}
         </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          {/* Transactions */}
+          {/* Income / Expense */}
           {(type === "income" || type === "expense") && (
             <>
               <label className="text-sm text-gray-500">Category</label>
@@ -155,25 +139,12 @@ export default function ModalForm({
                 <option value="" disabled>
                   Select category
                 </option>
-                {categories.map((cat) => (
+                {expenseCategories.map((cat) => (
                   <option key={cat} value={cat}>
                     {cat}
                   </option>
                 ))}
               </select>
-
-              {formData.category === "Other" && (
-                <input
-                  type="text"
-                  placeholder="Specify category"
-                  value={formData.customCategory || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, customCategory: e.target.value })
-                  }
-                  required
-                  className="border px-2 py-1 rounded"
-                />
-              )}
 
               <label className="text-sm text-gray-500">Description</label>
               <input
@@ -201,9 +172,9 @@ export default function ModalForm({
               <label className="text-sm text-gray-500">Date</label>
               <input
                 type="date"
-                value={formData.transac_date || ""}
+                value={formData.transaction_date || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, transac_date: e.target.value })
+                  setFormData({ ...formData, transaction_date: e.target.value })
                 }
                 required
                 className="border px-2 py-1 rounded"
@@ -214,111 +185,75 @@ export default function ModalForm({
           {/* Budget */}
           {type === "budget" && (
             <>
-              <label className="text-sm text-gray-500">Category</label>
-              <select
-                value={formData.category || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, category: e.target.value })
-                }
-                required
-                className="border px-2 py-1 rounded"
-              >
-                <option value="" disabled>
-                  Select category
-                </option>
-                {expenseCategories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-                <option value="Other">Other</option>
-              </select>
+              {!selectedBudget && (
+                <>
+                  <label className="text-sm text-gray-500">Category</label>
+                  <select
+                    value={formData.category || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, category: e.target.value })
+                    }
+                    required
+                    className="border px-2 py-1 rounded"
+                  >
+                    <option value="" disabled>
+                      Select category
+                    </option>
+                    {expenseCategories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
 
-              {formData.category === "Other" && (
-                <input
-                  type="text"
-                  placeholder="Specify category"
-                  value={formData.customCategory || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, customCategory: e.target.value })
-                  }
-                  required
-                  className="border px-2 py-1 rounded"
-                />
+                  <label className="text-sm text-gray-500">Amount</label>
+                  <input
+                    type="number"
+                    placeholder="Amount"
+                    value={formData.amount || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, amount: e.target.value })
+                    }
+                    required
+                    className="border px-2 py-1 rounded"
+                  />
+
+                  <label className="text-sm text-gray-500">Start Date</label>
+                  <input
+                    type="date"
+                    value={formData.start_date || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, start_date: e.target.value })
+                    }
+                    required
+                    className="border px-2 py-1 rounded"
+                  />
+
+                  <label className="text-sm text-gray-500">End Date</label>
+                  <input
+                    type="date"
+                    value={formData.end_date || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, end_date: e.target.value })
+                    }
+                    required
+                    className="border px-2 py-1 rounded"
+                  />
+                </>
               )}
 
-              <label className="text-sm text-gray-500">Amount</label>
-              <input
-                type="number"
-                placeholder="Amount"
-                value={formData.amount || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, amount: e.target.value })
-                }
-                required
-                className="border px-2 py-1 rounded"
-              />
-
-              <label className="text-sm text-gray-500">Start Date</label>
-              <input
-                type="date"
-                value={formData.start_date || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, start_date: e.target.value })
-                }
-                required
-                className="border px-2 py-1 rounded"
-              />
-
-              <label className="text-sm text-gray-500">End Date</label>
-              <input
-                type="date"
-                value={formData.end_date || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, end_date: e.target.value })
-                }
-                required
-                className="border px-2 py-1 rounded"
-              />
-            </>
-          )}
-
-          {/* Goals */}
-          {type === "goal" && (
-            <>
-              <label className="text-sm text-gray-500">Title</label>
-              <input
-                type="text"
-                placeholder="Title"
-                value={formData.title || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, title: e.target.value })
-                }
-                required
-                className="border px-2 py-1 rounded"
-              />
-
-              <label className="text-sm text-gray-500">Target Amount</label>
-              <input
-                type="number"
-                placeholder="Target Amount"
-                value={formData.target_amount || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, target_amount: e.target.value })
-                }
-                required
-                className="border px-2 py-1 rounded"
-              />
-
-              <label className="text-sm text-gray-500">Deadline</label>
-              <input
-                type="date"
-                value={formData.deadline || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, deadline: e.target.value })
-                }
-                className="border px-2 py-1 rounded"
-              />
+              {selectedBudget && (
+                <>
+                  <label className="text-sm text-gray-500">Add Expense</label>
+                  <input
+                    type="number"
+                    placeholder="Expense Amount"
+                    value={expenseAmount}
+                    onChange={(e) => setExpenseAmount(e.target.value)}
+                    className="border px-2 py-1 rounded"
+                  />
+                </>
+              )}
             </>
           )}
 

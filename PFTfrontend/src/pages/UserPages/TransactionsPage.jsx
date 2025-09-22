@@ -1,6 +1,6 @@
 import { useState } from "react";
 import DashboardLayout from "../../layouts/DashboardLayout";
-import { PlusCircle, MinusCircle, Edit, Trash, Loader2 } from "lucide-react";
+import { PlusCircle, MinusCircle, Edit, Trash, Loader2, Search, Filter } from "lucide-react";
 import ModalForm from "../../components/ModalForm";
 import Swal from "sweetalert2";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
@@ -56,13 +56,10 @@ export default function Transactions() {
 
       setFormData({
         category: transaction.category,
-        customCategory:
-          transaction.category === "Other"
-            ? transaction.customCategory || ""
-            : "",
+        customCategory: transaction.category,
         amount: transaction.amount,
         description: transaction.description || "",
-        transac_date: transaction.transaction_date, // will be mapped correctly in handleSubmit
+        transaction_date: transaction.transaction_date, // will be mapped correctly in handleSubmit
       });
     } else {
       setEditingId(null);
@@ -90,8 +87,7 @@ export default function Transactions() {
     try {
       const txData = {
         type: modalType === "income" ? "Income" : "Expense",
-        category:
-          data.category === "Other" ? data.customCategory : data.category,
+        category: data.category,
         amount: Number(data.amount),
         transaction_date: data.transaction_date, // maps to backend
         description: data.description || "",
@@ -215,32 +211,35 @@ export default function Transactions() {
         </div>
       </div>
 
-      {/* Filter & Search */}
-      <div className="mb-4 flex flex-col md:flex-row md:items-center md:space-x-4 space-y-2 md:space-y-0">
-        <div className="flex items-center space-x-3">
-          <span className="text-gray-600">Filter by Type:</span>
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          >
-            <option value="all">All</option>
-            <option value="income">Income</option>
-            <option value="expense">Expense</option>
-          </select>
-        </div>
+      <section className="bg-white p-4 rounded-lg shadow-sm border space-y-3">
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Filter by Type */}
+          <div className="flex items-center space-x-2">
+            <Filter size={18} className="text-gray-500" />
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="border rounded-lg px-3 py-2 text-sm"
+            >
+              <option value="all">All</option>
+              <option value="income">Income</option>
+              <option value="expense">Expense</option>
+            </select>
+          </div>
 
-        <div className="flex items-center space-x-3">
-          <span className="text-gray-600">Search Description:</span>
-          <input
-            type="text"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            placeholder="Search..."
-            className="border px-3 py-2 rounded w-full md:w-64 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
+          {/* Search Description */}
+          <div className="flex items-center space-x-2">
+            <Search size={18} className="text-gray-500" />
+            <input
+              type="text"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Search description..."
+              className="border rounded-lg px-3 py-2 text-sm w-48 md:w-64"
+            />
+          </div>
         </div>
-      </div>
+      </section>
 
       {/* Transactions Table */}
       <div className="bg-white shadow rounded-lg overflow-hidden">

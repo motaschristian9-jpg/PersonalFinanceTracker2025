@@ -29,17 +29,25 @@ Route::middleware([JWTMiddleware::class])->group(function () {
 
     // Dashboard
     Route::prefix('dashboard')->group(function () {
+        // Transactions
         Route::get('transactions', [DashboardController::class, 'transactions']);
         Route::post('transactions', [DashboardController::class, 'storeTransaction']);
-        Route::delete('transactions/{id}', [DashboardController::class, 'deleteTransaction']);
         Route::put('transactions/{id}', [DashboardController::class, 'updateTransaction']);
+        Route::delete('transactions/{id}', [DashboardController::class, 'deleteTransaction']);
 
-
+        // Budgets
         Route::get('budgets', [DashboardController::class, 'budgets']);
         Route::post('budgets', [DashboardController::class, 'storeBudget']);
+        Route::put('budgets/{id}', [DashboardController::class, 'updateBudget']); // added update
+        Route::delete('budgets/{id}', [DashboardController::class, 'deleteBudget']); // added delete
 
+        // Savings Goals
         Route::get('savings-goals', [DashboardController::class, 'goals']);
         Route::post('savings-goals', [DashboardController::class, 'storeGoal']);
+        Route::put('savings-goals/{id}', [DashboardController::class, 'updateGoal']); // added update
+        Route::delete('savings-goals/{id}', [DashboardController::class, 'deleteGoal']); // added delete
+
+        // Reports
         Route::get('reports', [DashboardController::class, 'reports']);
     });
 });

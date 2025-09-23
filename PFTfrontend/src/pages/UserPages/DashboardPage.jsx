@@ -137,9 +137,10 @@ export default function Dashboard() {
         const budgetData = {
           category:
             data.category === "Other" ? data.customCategory : data.category,
-          limit: Number(data.limit || data.amount),
+          amount: Number(data.limit || data.amount),
           start_date: data.start_date,
           end_date: data.end_date,
+          description: data.description || "", // optional description
         };
         await budgetMutation.mutateAsync(budgetData);
         message = "Budget set!";

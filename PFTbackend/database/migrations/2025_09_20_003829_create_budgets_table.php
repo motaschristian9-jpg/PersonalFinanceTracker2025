@@ -17,6 +17,9 @@ return new class extends Migration {
             $table->decimal('amount', 12, 2);
             $table->date('start_date');
             $table->date('end_date');
+            $table->string('description', 255)->nullable();
+
+
             $table->timestamps();
         });
     }

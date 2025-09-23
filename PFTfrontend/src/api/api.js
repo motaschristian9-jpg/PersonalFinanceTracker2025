@@ -72,14 +72,16 @@ export const addBudget = (data) =>
     amount: Number(data.amount),
     start_date: data.start_date,
     end_date: data.end_date,
+    description: data.description || "", // optional description
   });
 
 export const updateBudget = (data) =>
-  api.put(`/dashboard/budgets/${data.id}`, {
+  api.put(`/dashboard/budgets/${data.budget_id}`, {
     category: data.category,
     amount: Number(data.amount),
     start_date: data.start_date,
     end_date: data.end_date,
+    description: data.description || "", // optional description
   });
 
 export const deleteBudget = (id) => api.delete(`/dashboard/budgets/${id}`);

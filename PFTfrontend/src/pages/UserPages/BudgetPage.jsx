@@ -53,6 +53,7 @@ const BudgetsPage = () => {
         ...b,
         allocated: Number(b.amount) || 0,
         spent: Number(b.spent ?? 0),
+        description: b.description || "", // Add description here
       }));
     },
     refetchOnWindowFocus: false,
@@ -78,6 +79,75 @@ const BudgetsPage = () => {
     onSuccess: () => queryClient.invalidateQueries(["budgets"]),
   });
 
+  const handleEditTransaction = async (transaction) => {
+    console.log("Editing transaction:", transaction);
+  };
+
+  const handleDeleteTransaction = async (transaction) => {
+    const result = await Swal.fire({
+      title: `Delete this transaction?`,
+      text: "This action cannot be undone.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#EF4444",
+      cancelButtonColor: "#6B7280",
+      confirmButtonText: "Yes, delete it!",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        queryClient.invalidateQueries(["budgets"]);
+        Swal.fire("Deleted!", "The transaction has been deleted.", "success");
+      } catch (error) {
+        Swal.fire("Error!", "Could not delete transaction.", "error");
+      }
+    }
+  };
+
+  const handleAddExpense = async ({ budget_id, amount }) => {
+    try {
+      await addExpenseMutation.mutateAsync({ budget_id, amount });
+      Swal.fire({
+        icon: "success",
+        title: "Expense added!",
+        confirmButtonColor: "#10B981",
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Oops!",
+        text: error.response?.data?.message || "Something went wrong.",
+        confirmButtonColor: "#EF4444",
+      });
+    }
+  };
+
+  const handleEditBudget = async (updatedBudget) => {
+    try {
+      await updateBudgetMutation.mutateAsync({
+        budget_id: updatedBudget.budget_id,
+        amount: updatedBudget.allocated,
+        start_date: updatedBudget.start_date,
+        end_date: updatedBudget.end_date,
+        description: updatedBudget.description || "", // <-- added
+      });
+      setBudgetModalOpen(false);
+      setActiveBudget(null);
+      Swal.fire({
+        icon: "success",
+        title: "Budget updated!",
+        confirmButtonColor: "#10B981",
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Oops!",
+        text: error.response?.data?.message || "Something went wrong.",
+        confirmButtonColor: "#EF4444",
+      });
+    }
+  };
+
   const handleOpenModal = (budget = null) => {
     if (budget) {
       setSelectedBudget(budget);
@@ -86,11 +156,18 @@ const BudgetsPage = () => {
         amount: safeNumber(budget.allocated),
         start_date: budget.start_date || "",
         end_date: budget.end_date || "",
+        description: budget.description || "", // <-- added
       });
       setEditingId(budget.budget_id);
     } else {
       setSelectedBudget(null);
-      setFormData({ category: "", amount: "", start_date: "", end_date: "" });
+      setFormData({
+        category: "",
+        amount: "",
+        start_date: "",
+        end_date: "",
+        description: "",
+      }); // <-- added
       setEditingId(null);
     }
     setModalOpen(true);
@@ -106,14 +183,20 @@ const BudgetsPage = () => {
   const handleSubmit = async (data) => {
     try {
       if (editingId) {
-        await updateBudgetMutation.mutateAsync({ id: editingId, ...data });
+        await updateBudgetMutation.mutateAsync({
+          id: editingId,
+          ...data,
+          description: data.description || "",
+        }); // <-- added
         Swal.fire({
           icon: "success",
           title: "Budget updated!",
           confirmButtonColor: "#10B981",
         });
       } else {
-        await budgetMutation.mutateAsync(data);
+        await budgetMutation.mutateAsync({
+          ...data,
+        }); // <-- added
         Swal.fire({
           icon: "success",
           title: "Budget added!",
@@ -172,7 +255,7 @@ const BudgetsPage = () => {
         </Button>
       </div>
 
-      {/* Active Budgets Grid */}
+      {/* Budgets Grid */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {budgets.map((b, i) => {
           const allocated = safeNumber(b.allocated);
@@ -180,48 +263,86 @@ const BudgetsPage = () => {
           const remaining = allocated - spent;
           const percent = allocated > 0 ? (spent / allocated) * 100 : 0;
 
-          // Determine status
-          let status = "✅ On Track";
-          if (spent >= allocated && allocated > 0) status = "❌ Overspent";
-          else if (percent > 80) status = "⚠️ Near Limit";
+          let status = "On Track";
+          let statusColor = "green";
+          if (spent >= allocated && allocated > 0) {
+            status = "Overspent";
+            statusColor = "red";
+          } else if (percent > 80) {
+            status = "Near Limit";
+            statusColor = "yellow";
+          }
 
           return (
             <div
               key={i}
-              className="p-6 rounded-2xl border bg-white shadow-md hover:shadow-lg cursor-pointer"
+              className={`p-6 rounded-2xl border bg-white shadow-md hover:shadow-lg cursor-pointer border-t-4 border-${statusColor}-500 transition-all duration-300 flex flex-col md:flex-row justify-between`}
               onClick={() => {
-                setActiveBudget(b);
-                setBudgetModalOpen(true);
+                setActiveBudget(null);
+                setTimeout(() => {
+                  setActiveBudget(b);
+                  setBudgetModalOpen(true);
+                }, 50);
               }}
             >
-              <h2 className="font-semibold text-lg mb-2">
-                {b.category ?? "Unknown"}
-              </h2>
-              <p className="text-sm text-gray-500">
-                Allocated: ₱{allocated.toLocaleString()}
-              </p>
-              <p className="text-sm text-gray-500">
-                Spent: ₱{spent.toLocaleString()}
-              </p>
-              <p className="text-sm text-gray-500 mb-2">
-                Remaining: ₱{remaining.toLocaleString()}
-              </p>
+              {/* Left: Budget Info */}
+              <div className="mb-4 md:mb-0 md:w-1/2">
+                <h2 className="font-semibold text-lg mb-3">
+                  {b.category ?? "Unknown"}{" "}
+                  <span className="text-gray-500 font-normal text-sm">
+                    ({b.description ? b.description : "No Description"})
+                  </span>
+                </h2>
 
-              {/* Progress Bar */}
-              <Progress value={percent} className="mt-2 mb-2" />
+                {/* Dates */}
+                <div className="flex flex-col md:flex-row gap-2 mb-3 text-sm text-gray-500">
+                  <div className="flex-1 bg-gray-50 p-2 rounded">
+                    <span className="font-medium">Start:</span>{" "}
+                    {b.start_date
+                      ? new Date(b.start_date).toLocaleDateString()
+                      : "-"}
+                  </div>
+                  <div className="flex-1 bg-gray-50 p-2 rounded">
+                    <span className="font-medium">End:</span>{" "}
+                    {b.end_date
+                      ? new Date(b.end_date).toLocaleDateString()
+                      : "-"}
+                  </div>
+                </div>
 
-              {/* Status */}
-              <p
-                className={`mt-2 text-sm font-medium ${
-                  status.includes("❌")
-                    ? "text-red-500"
-                    : status.includes("⚠️")
-                    ? "text-yellow-500"
-                    : "text-green-500"
-                }`}
-              >
-                {status}
-              </p>
+                {/* Allocated / Spent / Remaining */}
+                <div className="mb-3 space-y-1">
+                  <p className="text-sm text-gray-700">
+                    <span className="font-medium">Allocated:</span> ₱
+                    {allocated.toLocaleString()}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <span className="font-medium">Spent:</span> ₱
+                    {spent.toLocaleString()}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <span className="font-medium">Remaining:</span> ₱
+                    {remaining.toLocaleString()}
+                  </p>
+                </div>
+
+                {/* Full-width Progress */}
+                <Progress
+                  value={percent}
+                  className="w-full h-3 rounded-full mt-2 mb-2"
+                />
+
+                <span
+                  className={`inline-block mt-2 px-3 py-1 text-sm font-medium rounded-full bg-${statusColor}-100 text-${statusColor}-800`}
+                >
+                  {status}
+                </span>
+              </div>
+
+              {/* Right: Optional extra info (empty) */}
+              <div className="md:pl-6 md:w-1/2 text-gray-600 text-sm mt-4 md:mt-0 flex items-center justify-center">
+                {/* Empty for now */}
+              </div>
             </div>
           );
         })}
@@ -333,14 +454,21 @@ const BudgetsPage = () => {
         onSubmit={handleSubmit}
       />
 
-      {/* Semi Transaction History Modal */}
-      <BudgetCardModal
-        isOpen={budgetModalOpen}
-        onClose={() => setBudgetModalOpen(false)}
-        budget={activeBudget}
-        transactions={activeBudget?.transactions || []} // <-- safe default
-        onAddExpense={addExpenseMutation.mutateAsync}
-      />
+      {/* Budget Card Modal */}
+      {budgetModalOpen && (
+        <BudgetCardModal
+          budget={activeBudget}
+          transactions={activeBudget?.transactions || []}
+          onClose={() => {
+            setBudgetModalOpen(false);
+            setActiveBudget(null);
+          }}
+          onEditBudget={handleEditBudget}
+          onAddExpense={handleAddExpense}
+          onEditTransaction={handleEditTransaction}
+          onDeleteTransaction={handleDeleteTransaction}
+        />
+      )}
     </DashboardLayout>
   );
 };

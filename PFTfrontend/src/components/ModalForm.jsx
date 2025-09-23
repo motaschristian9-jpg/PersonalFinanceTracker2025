@@ -63,7 +63,7 @@ export default function ModalForm({
             !formData.category ||
             !formData.amount ||
             !formData.start_date ||
-            !formData.end_date
+            !formData.end_date 
           ) {
             throw new Error("All budget fields are required.");
           }
@@ -72,6 +72,7 @@ export default function ModalForm({
             amount: Number(formData.amount),
             start_date: formData.start_date,
             end_date: formData.end_date,
+            description: formData.description || "", // optional description
             editingId: editingId || null,
           };
         }
@@ -205,6 +206,19 @@ export default function ModalForm({
                       </option>
                     ))}
                   </select>
+
+                  <label className="text-sm text-gray-500">
+                    Description (optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter a short description"
+                    value={formData.description || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                    className="border px-2 py-1 rounded w-full"
+                  />
 
                   <label className="text-sm text-gray-500">Amount</label>
                   <input

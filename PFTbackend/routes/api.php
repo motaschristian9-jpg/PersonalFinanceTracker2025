@@ -38,14 +38,20 @@ Route::middleware([JWTMiddleware::class])->group(function () {
         // Budgets
         Route::get('budgets', [DashboardController::class, 'budgets']);
         Route::post('budgets', [DashboardController::class, 'storeBudget']);
-        Route::put('budgets/{id}', [DashboardController::class, 'updateBudget']); // added update
-        Route::delete('budgets/{id}', [DashboardController::class, 'deleteBudget']); // added delete
+        Route::put('budgets/{id}', [DashboardController::class, 'updateBudget']);
+        Route::delete('budgets/{id}', [DashboardController::class, 'deleteBudget']);
+
+        // 🔥 New route for mini transaction history per budget
+        Route::get('budgets/{id}/transactions', [DashboardController::class, 'budgetTransactions']);
+        // Add an expense to a specific budget
+        Route::post('budgets/{id}/add-expense', [DashboardController::class, 'addExpenseToBudget']);
+
 
         // Savings Goals
         Route::get('savings-goals', [DashboardController::class, 'goals']);
         Route::post('savings-goals', [DashboardController::class, 'storeGoal']);
-        Route::put('savings-goals/{id}', [DashboardController::class, 'updateGoal']); // added update
-        Route::delete('savings-goals/{id}', [DashboardController::class, 'deleteGoal']); // added delete
+        Route::put('savings-goals/{id}', [DashboardController::class, 'updateGoal']);
+        Route::delete('savings-goals/{id}', [DashboardController::class, 'deleteGoal']);
 
         // Reports
         Route::get('reports', [DashboardController::class, 'reports']);

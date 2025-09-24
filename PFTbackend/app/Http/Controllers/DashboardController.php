@@ -96,29 +96,29 @@ class DashboardController extends Controller
     }
 
     public function storeBudget(Request $request)
-{
-    $request->validate([
-        'category' => 'required|string|max:255',
-        'amount' => 'required|numeric|min:0',
-        'start_date' => 'required|date',
-        'end_date' => 'required|date|after_or_equal:start_date',
-        'description' => 'nullable|string|max:1000', // optional description
-    ]);
+    {
+        $request->validate([
+            'category' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:0',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+            'description' => 'nullable|string|max:1000', // optional description
+        ]);
 
-    $budget = Budget::create([
-        'user_id' => $request->user()->id,
-        'category' => $request->category,
-        'amount' => $request->amount,
-        'start_date' => $request->start_date,
-        'end_date' => $request->end_date,
-        'description' => $request->description ?? null, // set to null if not provided
-    ]);
+        $budget = Budget::create([
+            'user_id' => $request->user()->id,
+            'category' => $request->category,
+            'amount' => $request->amount,
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
+            'description' => $request->description ?? null, // set to null if not provided
+        ]);
 
-    return response()->json([
-        'message' => 'Budget added successfully',
-        'budget' => $budget,
-    ]);
-}
+        return response()->json([
+            'message' => 'Budget added successfully',
+            'budget' => $budget,
+        ]);
+    }
 
 
     public function updateBudget(Request $request, $id)
@@ -153,9 +153,9 @@ class DashboardController extends Controller
 
 
     // Add an expense to a specific budget
-    public function addExpenseToBudget(Request $request, $budgetId)
+    public function budgetTransactions(Request $request, $budgetId)
     {
-        $budget = Budget::where('id', $budgetId)
+        $budget = Budget::where('budget_id', $budgetId)
             ->where('user_id', $request->user()->id)
             ->first();
 
@@ -163,30 +163,53 @@ class DashboardController extends Controller
             return response()->json(['message' => 'Budget not found'], 404);
         }
 
+        // Fetch transactions tied to this budget's category
+        $transactions = Transaction::where('user_id', $request->user()->id)
+            ->where('category', $budget->category) // match category to budget
+            ->orderBy('transaction_date', 'desc')
+            ->get();
+
+        return response()->json([
+            'budget' => $budget,
+            'transactions' => $transactions,
+        ]);
+    }
+
+    public function addExpenseToBudget(Request $request, $budgetId)
+    {
+        // Find the budget for the logged-in user
+        $budget = Budget::where('budget_id', $budgetId)
+            ->where('user_id', $request->user()->id)
+            ->first();
+
+        if (!$budget) {
+            return response()->json(['message' => 'Budget not found'], 404);
+        }
+
+        // Validate the request
         $request->validate([
             'amount' => 'required|numeric|min:0',
-            'transaction_date' => 'required|date',
-            'description' => 'nullable|string|max:500',
+            'transaction_date' => 'nullable|date', // optional
         ]);
 
         $transaction = Transaction::create([
             'user_id' => $request->user()->id,
+            'budget_id' => $budget->budget_id, // link transaction to the budget
             'type' => 'Expense',
             'category' => $budget->category,
             'amount' => $request->amount,
-            'transaction_date' => $request->transaction_date,
+            'transaction_date' => $request->transaction_date ?? now(), // current date if not provided
             'description' => $request->description ?? '',
         ]);
 
-        // Optionally, you can update spent amount in budget here if you have a column
-        // $budget->spent += $request->amount;
-        // $budget->save();
+
 
         return response()->json([
             'message' => 'Expense added to budget successfully',
             'transaction' => $transaction,
         ]);
     }
+
 
     public function deleteBudget($id)
     {

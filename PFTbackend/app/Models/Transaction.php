@@ -9,21 +9,31 @@ class Transaction extends Model
 {
     use HasFactory;
 
-    // Specify the primary key if it's not "id"
-    protected $primaryKey = 'transaction_id'; // <-- replace with your actual PK column name
+    // Primary key
+    protected $primaryKey = 'transaction_id';
 
-    // If your primary key is not auto-incrementing
-    public $incrementing = true; // or false if it's not
-
-    // If your primary key is not an integer
-    protected $keyType = 'int'; // or 'string'
+    // Auto-increment and type
+    public $incrementing = true;
+    protected $keyType = 'int';
 
     protected $fillable = [
         'user_id',
+        'budget_id',       // 👈 make sure budget_id is fillable
         'type',
         'category',
         'amount',
         'transaction_date',
         'description',
     ];
+
+    // 👇 Relationships
+    public function budget()
+    {
+        return $this->belongsTo(Budget::class, 'budget_id', 'budget_id');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

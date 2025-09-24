@@ -24,10 +24,12 @@ import BudgetCardModal from "../../components/BudgetCardModal";
 
 import {
   fetchBudgets,
+  fetchTransactions,
   addBudget,
   updateBudget,
   deleteBudget,
   addExpenseToBudget,
+  deleteTransaction
 } from "../../api/api";
 
 const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444"];
@@ -39,26 +41,42 @@ const BudgetsPage = () => {
   const [formData, setFormData] = useState({});
   const [editingId, setEditingId] = useState(null);
   const [selectedBudget, setSelectedBudget] = useState(null);
-
   const [budgetModalOpen, setBudgetModalOpen] = useState(false);
   const [activeBudget, setActiveBudget] = useState(null);
 
   const safeNumber = (n) => (typeof n === "number" ? n : 0);
 
-  const { data: budgets = [], isLoading } = useQuery({
+  // Fetch budgets
+  const { data: budgets = [], isLoading: budgetsLoading } = useQuery({
     queryKey: ["budgets"],
     queryFn: async () => {
       const res = await fetchBudgets();
       return res.data.map((b) => ({
         ...b,
         allocated: Number(b.amount) || 0,
-        spent: Number(b.spent ?? 0),
-        description: b.description || "", // Add description here
+        description: b.description || "",
       }));
     },
     refetchOnWindowFocus: false,
   });
 
+  const { data: transactions = [] } = useQuery({
+    queryKey: ["transactions"],
+    queryFn: async () => {
+      const res = await fetchTransactions();
+      return res.data; // make sure this is the array of transactions
+    },
+    refetchOnWindowFocus: false,
+  });
+
+  // Helper: calculate spent per budget
+  const budgetSpent = (budgetId) => {
+    return transactions
+      .filter((tx) => tx.budget_id === budgetId)
+      .reduce((sum, tx) => sum + Number(tx.amount), 0);
+  };
+
+  // Mutations
   const budgetMutation = useMutation({
     mutationFn: addBudget,
     onSuccess: () => queryClient.invalidateQueries(["budgets"]),
@@ -76,13 +94,21 @@ const BudgetsPage = () => {
 
   const addExpenseMutation = useMutation({
     mutationFn: addExpenseToBudget,
-    onSuccess: () => queryClient.invalidateQueries(["budgets"]),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["budgets"]);
+      queryClient.invalidateQueries(["transactions"]);
+    },
   });
 
-  const handleEditTransaction = async (transaction) => {
-    console.log("Editing transaction:", transaction);
-  };
+  const deleteTransactionMutation = useMutation({
+    mutationFn: deleteTransaction, // make sure this is imported from your API file
+    onSuccess: () => {
+      queryClient.invalidateQueries(["transactions"]);
+      queryClient.invalidateQueries(["budgets"]);
+    },
+  });
 
+  // Handlers
   const handleDeleteTransaction = async (transaction) => {
     const result = await Swal.fire({
       title: `Delete this transaction?`,
@@ -96,7 +122,7 @@ const BudgetsPage = () => {
 
     if (result.isConfirmed) {
       try {
-        queryClient.invalidateQueries(["budgets"]);
+        await deleteTransactionMutation.mutateAsync(transaction.transaction_id);
         Swal.fire("Deleted!", "The transaction has been deleted.", "success");
       } catch (error) {
         Swal.fire("Error!", "Could not delete transaction.", "error");
@@ -104,9 +130,13 @@ const BudgetsPage = () => {
     }
   };
 
-  const handleAddExpense = async ({ budget_id, amount }) => {
+  const handleAddExpense = async ({ budget_id, amount, description }) => {
     try {
-      await addExpenseMutation.mutateAsync({ budget_id, amount });
+      await addExpenseMutation.mutateAsync({
+        budget_id,
+        amount,
+        description,
+      });
       Swal.fire({
         icon: "success",
         title: "Expense added!",
@@ -125,11 +155,11 @@ const BudgetsPage = () => {
   const handleEditBudget = async (updatedBudget) => {
     try {
       await updateBudgetMutation.mutateAsync({
-        budget_id: updatedBudget.budget_id,
+        id: updatedBudget.budget_id,
         amount: updatedBudget.allocated,
         start_date: updatedBudget.start_date,
         end_date: updatedBudget.end_date,
-        description: updatedBudget.description || "", // <-- added
+        description: updatedBudget.description || "",
       });
       setBudgetModalOpen(false);
       setActiveBudget(null);
@@ -156,7 +186,7 @@ const BudgetsPage = () => {
         amount: safeNumber(budget.allocated),
         start_date: budget.start_date || "",
         end_date: budget.end_date || "",
-        description: budget.description || "", // <-- added
+        description: budget.description || "",
       });
       setEditingId(budget.budget_id);
     } else {
@@ -167,7 +197,7 @@ const BudgetsPage = () => {
         start_date: "",
         end_date: "",
         description: "",
-      }); // <-- added
+      });
       setEditingId(null);
     }
     setModalOpen(true);
@@ -186,17 +216,14 @@ const BudgetsPage = () => {
         await updateBudgetMutation.mutateAsync({
           id: editingId,
           ...data,
-          description: data.description || "",
-        }); // <-- added
+        });
         Swal.fire({
           icon: "success",
           title: "Budget updated!",
           confirmButtonColor: "#10B981",
         });
       } else {
-        await budgetMutation.mutateAsync({
-          ...data,
-        }); // <-- added
+        await budgetMutation.mutateAsync({ ...data });
         Swal.fire({
           icon: "success",
           title: "Budget added!",
@@ -235,7 +262,7 @@ const BudgetsPage = () => {
     });
   };
 
-  if (isLoading)
+  if (budgetsLoading)
     return (
       <DashboardLayout>
         <p className="p-6">Loading budgets...</p>
@@ -258,20 +285,12 @@ const BudgetsPage = () => {
       {/* Budgets Grid */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {budgets.map((b, i) => {
+          const spent = budgetSpent(b.budget_id);
           const allocated = safeNumber(b.allocated);
-          const spent = safeNumber(b.spent);
           const remaining = allocated - spent;
-          const percent = allocated > 0 ? (spent / allocated) * 100 : 0;
-
-          let status = "On Track";
-          let statusColor = "green";
-          if (spent >= allocated && allocated > 0) {
-            status = "Overspent";
-            statusColor = "red";
-          } else if (percent > 80) {
-            status = "Near Limit";
-            statusColor = "yellow";
-          }
+          const percent = Math.min((spent / allocated) * 100, 100);
+          const statusColor = remaining > 0 ? "green" : "red";
+          const status = remaining > 0 ? "On Track" : "Over Budget";
 
           return (
             <div
@@ -280,12 +299,11 @@ const BudgetsPage = () => {
               onClick={() => {
                 setActiveBudget(null);
                 setTimeout(() => {
-                  setActiveBudget(b);
+                  setActiveBudget({ ...b, spent });
                   setBudgetModalOpen(true);
                 }, 50);
               }}
             >
-              {/* Left: Budget Info */}
               <div className="mb-4 md:mb-0 md:w-1/2">
                 <h2 className="font-semibold text-lg mb-3">
                   {b.category ?? "Unknown"}{" "}
@@ -294,7 +312,6 @@ const BudgetsPage = () => {
                   </span>
                 </h2>
 
-                {/* Dates */}
                 <div className="flex flex-col md:flex-row gap-2 mb-3 text-sm text-gray-500">
                   <div className="flex-1 bg-gray-50 p-2 rounded">
                     <span className="font-medium">Start:</span>{" "}
@@ -310,7 +327,6 @@ const BudgetsPage = () => {
                   </div>
                 </div>
 
-                {/* Allocated / Spent / Remaining */}
                 <div className="mb-3 space-y-1">
                   <p className="text-sm text-gray-700">
                     <span className="font-medium">Allocated:</span> ₱
@@ -326,7 +342,6 @@ const BudgetsPage = () => {
                   </p>
                 </div>
 
-                {/* Full-width Progress */}
                 <Progress
                   value={percent}
                   className="w-full h-3 rounded-full mt-2 mb-2"
@@ -339,9 +354,8 @@ const BudgetsPage = () => {
                 </span>
               </div>
 
-              {/* Right: Optional extra info (empty) */}
               <div className="md:pl-6 md:w-1/2 text-gray-600 text-sm mt-4 md:mt-0 flex items-center justify-center">
-                {/* Empty for now */}
+                {/* Optional extra info */}
               </div>
             </div>
           );
@@ -365,9 +379,8 @@ const BudgetsPage = () => {
             <tbody>
               {budgets.map((b, i) => {
                 const allocated = safeNumber(b.allocated);
-                const spent = safeNumber(b.spent);
+                const spent = budgetSpent(b.budget_id);
                 const remaining = allocated - spent;
-
                 return (
                   <tr key={i} className="border-t hover:bg-gray-50">
                     <td className="px-4 py-3">{b.category ?? "Unknown"}</td>
@@ -437,7 +450,11 @@ const BudgetsPage = () => {
             <Tooltip />
             <Legend />
             <Bar dataKey="allocated" fill="#3B82F6" name="Allocated" />
-            <Bar dataKey="spent" fill="#EF4444" name="Spent" />
+            <Bar
+              dataKey={(b) => budgetSpent(b.budget_id)}
+              fill="#EF4444"
+              name="Spent"
+            />
           </BarChart>
         </Card>
       </div>
@@ -458,15 +475,16 @@ const BudgetsPage = () => {
       {budgetModalOpen && (
         <BudgetCardModal
           budget={activeBudget}
-          transactions={activeBudget?.transactions || []}
+          transactions={transactions.filter(
+            (tx) => tx.budget_id === activeBudget?.budget_id
+          )}
           onClose={() => {
             setBudgetModalOpen(false);
             setActiveBudget(null);
           }}
           onEditBudget={handleEditBudget}
           onAddExpense={handleAddExpense}
-          onEditTransaction={handleEditTransaction}
-          onDeleteTransaction={handleDeleteTransaction}
+          onDeleteTransaction={handleDeleteTransaction} // add this
         />
       )}
     </DashboardLayout>

@@ -14,6 +14,7 @@ import {
   deleteTransaction,
   deleteBudget,
   deleteGoal,
+  addExpenseToBudget, // <- import new API function
 } from "./api";
 
 // ------------------ HELPER ------------------
@@ -57,6 +58,19 @@ export const useAddGoal = () => {
   return useMutation({
     mutationFn: addGoal,
     onSuccess: () => queryClient.invalidateQueries(["goals"]),
+  });
+};
+
+// 🔥 New mutation: Add expense to a specific budget
+export const useAddExpenseToBudget = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: addExpenseToBudget,
+    onSuccess: () => {
+      queryClient.invalidateQueries(["budgets"]);
+      queryClient.invalidateQueries(["transactions"]);
+      queryClient.invalidateQueries(["reports"]);
+    },
   });
 };
 

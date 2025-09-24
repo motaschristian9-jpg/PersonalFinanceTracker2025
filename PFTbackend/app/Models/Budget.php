@@ -24,4 +24,10 @@ class Budget extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    // 👇 Add this
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class, 'budget_id', 'budget_id');
+    }
 }

@@ -90,8 +90,6 @@ export const deleteBudget = (id) => api.delete(`/dashboard/budgets/${id}`);
 export const addExpenseToBudget = (data) =>
   api.post(`/dashboard/budgets/${data.budget_id}/add-expense`, {
     amount: Number(data.amount),
-    description: data.description || "",
-    transaction_date: data.transaction_date,
   });
 
 // --- Savings Goals ---

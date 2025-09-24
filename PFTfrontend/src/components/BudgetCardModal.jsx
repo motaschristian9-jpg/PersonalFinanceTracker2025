@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Edit, X, Plus } from "lucide-react";
+import Swal from "sweetalert2";
 
 export default function BudgetModal({
   budget,
@@ -7,7 +8,6 @@ export default function BudgetModal({
   onClose,
   onEditBudget,
   onAddExpense,
-  onEditTransaction,
   onDeleteTransaction,
 }) {
   const [localBudget, setLocalBudget] = useState(
@@ -243,23 +243,20 @@ export default function BudgetModal({
                 </tr>
               </thead>
               <tbody>
-                {transactions.map((tx) => (
-                  <tr key={tx.id} className="border-t hover:bg-gray-50">
+                {transactions.map((tx, index) => (
+                  <tr
+                    key={tx.id ?? index}
+                    className="border-t hover:bg-gray-50"
+                  >
                     <td className="px-3 py-2">
-                      {tx.date ? new Date(tx.date).toLocaleDateString() : "-"}
+                      {tx.transaction_date
+                        ? new Date(tx.transaction_date).toLocaleDateString()
+                        : "-"}
                     </td>
                     <td className="px-3 py-2">
                       ₱{tx.amount ? Number(tx.amount).toLocaleString() : "-"}
                     </td>
                     <td className="px-3 py-2 flex gap-2">
-                      {onEditTransaction && (
-                        <button
-                          className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                          onClick={() => onEditTransaction(tx)}
-                        >
-                          <Edit size={14} /> Edit
-                        </button>
-                      )}
                       {onDeleteTransaction && (
                         <button
                           className="text-red-600 hover:text-red-800 flex items-center gap-1"

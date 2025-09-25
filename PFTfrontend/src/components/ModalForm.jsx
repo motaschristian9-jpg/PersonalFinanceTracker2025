@@ -8,7 +8,7 @@ export default function ModalForm({
   formData,
   setFormData,
   editingId,
-  selectedBudget = null, // optional prop for detailed budget modal
+  selectedBudget = null,
   onClose,
   onSubmit,
 }) {
@@ -17,12 +17,22 @@ export default function ModalForm({
 
   if (!isOpen) return null;
 
+  // Define categories separately
   const expenseCategories = [
     "Food",
     "Transport",
     "Bills",
     "Entertainment",
     "Shopping",
+    "Other",
+  ];
+
+  const incomeCategories = [
+    "Salary",
+    "Business",
+    "Investments",
+    "Freelancing",
+    "Gifts",
     "Other",
   ];
 
@@ -52,18 +62,16 @@ export default function ModalForm({
         };
       } else if (type === "budget") {
         if (selectedBudget && expenseAmount) {
-          // Add expense to selected budget
           payload = {
             budget_id: selectedBudget.budget_id,
             amount: Number(expenseAmount),
           };
         } else {
-          // Create or edit budget
           if (
             !formData.category ||
             !formData.amount ||
             !formData.start_date ||
-            !formData.end_date 
+            !formData.end_date
           ) {
             throw new Error("All budget fields are required.");
           }
@@ -72,7 +80,7 @@ export default function ModalForm({
             amount: Number(formData.amount),
             start_date: formData.start_date,
             end_date: formData.end_date,
-            description: formData.description || "", // optional description
+            description: formData.description || "",
             editingId: editingId || null,
           };
         }
@@ -80,9 +88,7 @@ export default function ModalForm({
         throw new Error("Invalid form type");
       }
 
-      await onSubmit(payload); // parent handles API call and closing modal
-
-      // Clear expense input if used
+      await onSubmit(payload);
       if (expenseAmount) setExpenseAmount("");
     } catch (err) {
       console.error("Form submission error:", err);
@@ -140,11 +146,13 @@ export default function ModalForm({
                 <option value="" disabled>
                   Select category
                 </option>
-                {expenseCategories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
+                {(type === "income" ? incomeCategories : expenseCategories).map(
+                  (cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  )
+                )}
               </select>
 
               <label className="text-sm text-gray-500">Description</label>

@@ -76,7 +76,7 @@ export const addBudget = (data) =>
   });
 
 export const updateBudget = (data) =>
-  api.put(`/dashboard/budgets/${data.budget_id}`, {
+  api.put(`/dashboard/budgets/${data.id}`, {
     category: data.category,
     amount: Number(data.amount),
     start_date: data.start_date,

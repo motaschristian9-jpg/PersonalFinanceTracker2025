@@ -16,6 +16,8 @@ export default function BudgetModal({
   const [allocatedInput, setAllocatedInput] = useState(
     localBudget.allocated?.toString() || ""
   );
+  const remaining =
+    (Number(allocatedInput) || 0) - Number(localBudget.spent || 0);
   const [isEditing, setIsEditing] = useState(false);
   const [expenseAmount, setExpenseAmount] = useState("");
   const [descriptionInput, setDescriptionInput] = useState(
@@ -37,9 +39,6 @@ export default function BudgetModal({
 
   if (!budget) return null;
 
-  const remaining =
-    (Number(allocatedInput) || 0) - Number(localBudget.spent || 0);
-
   const handleSaveChanges = async () => {
     await onEditBudget({
       ...localBudget,
@@ -55,6 +54,13 @@ export default function BudgetModal({
       budget_id: budget.budget_id,
       amount: Number(expenseAmount),
     });
+
+    // ✅ Update local spent immediately for realtime Remaining update
+    setLocalBudget((prev) => ({
+      ...prev,
+      spent: Number(prev.spent) + Number(expenseAmount),
+    }));
+
     setExpenseAmount("");
   };
 
@@ -260,7 +266,16 @@ export default function BudgetModal({
                       {onDeleteTransaction && (
                         <button
                           className="text-red-600 hover:text-red-800 flex items-center gap-1"
-                          onClick={() => onDeleteTransaction(tx)}
+                          onClick={async () => {
+                            await onDeleteTransaction(tx);
+
+                            // ✅ Update local spent immediately for realtime Remaining update
+                            setLocalBudget((prev) => ({
+                              ...prev,
+                              spent:
+                                Number(prev.spent) - Number(tx.amount || 0),
+                            }));
+                          }}
                         >
                           <X size={14} /> Delete
                         </button>

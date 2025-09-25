@@ -213,7 +213,7 @@ class DashboardController extends Controller
 
     public function deleteBudget($id)
     {
-        $budget = Budget::where('id', $id)
+        $budget = Budget::where('budget_id', $id)
             ->where('user_id', auth()->id())
             ->first();
 

@@ -29,7 +29,7 @@ import {
   updateBudget,
   deleteBudget,
   addExpenseToBudget,
-  deleteTransaction
+  deleteTransaction,
 } from "../../api/api";
 
 const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444"];
@@ -43,6 +43,7 @@ const BudgetsPage = () => {
   const [selectedBudget, setSelectedBudget] = useState(null);
   const [budgetModalOpen, setBudgetModalOpen] = useState(false);
   const [activeBudget, setActiveBudget] = useState(null);
+  const MAX_BUDGETS = 5;
 
   const safeNumber = (n) => (typeof n === "number" ? n : 0);
 
@@ -179,6 +180,16 @@ const BudgetsPage = () => {
   };
 
   const handleOpenModal = (budget = null) => {
+    if (!budget && budgets.length >= MAX_BUDGETS) {
+      Swal.fire({
+        icon: "warning",
+        title: "Limit Reached",
+        text: `You can only create up to ${MAX_BUDGETS} budgets.`,
+        confirmButtonColor: "#3085d6",
+      });
+      return;
+    }
+
     if (budget) {
       setSelectedBudget(budget);
       setFormData({
@@ -200,6 +211,7 @@ const BudgetsPage = () => {
       });
       setEditingId(null);
     }
+
     setModalOpen(true);
   };
 
@@ -388,13 +400,6 @@ const BudgetsPage = () => {
                     <td className="px-4 py-3">₱{spent.toLocaleString()}</td>
                     <td className="px-4 py-3">₱{remaining.toLocaleString()}</td>
                     <td className="px-4 py-3 flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleOpenModal(b)}
-                      >
-                        <Edit size={16} />
-                      </Button>
                       <Button
                         size="sm"
                         variant="destructive"

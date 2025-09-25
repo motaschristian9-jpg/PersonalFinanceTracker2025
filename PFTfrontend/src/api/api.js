@@ -42,12 +42,18 @@ export default api;
    API Helper Functions
    ------------------------- */
 
-// --- User ---
+// --- Fetch Data ---
 export const fetchProfile = () => api.get("/profile");
 
-// --- Transactions ---
 export const fetchTransactions = () => api.get("/dashboard/transactions");
 
+export const fetchBudgets = () => api.get("/dashboard/budgets");
+
+export const fetchGoals = () => api.get("/dashboard/savings-goals");
+
+export const fetchReports = () => api.get("/dashboard/reports");
+
+// --- Adding Data ---
 export const addTransaction = (data) =>
   api.post("/dashboard/transactions", {
     type: data.type?.toLowerCase() === "income" ? "Income" : "Expense",
@@ -56,15 +62,6 @@ export const addTransaction = (data) =>
     transaction_date: data.transaction_date,
     description: data.description || "",
   });
-
-export const updateTransaction = (id, data) =>
-  api.put(`/dashboard/transactions/${id}`, data);
-
-export const deleteTransaction = (id) =>
-  api.delete(`/dashboard/transactions/${id}`);
-
-// --- Budgets ---
-export const fetchBudgets = () => api.get("/dashboard/budgets");
 
 export const addBudget = (data) =>
   api.post("/dashboard/budgets", {
@@ -75,6 +72,22 @@ export const addBudget = (data) =>
     description: data.description || "", // optional description
   });
 
+export const addGoal = (data) =>
+  api.post("/dashboard/savings-goals", {
+    title: data.title,
+    target_amount: Number(data.target_amount),
+    deadline: data.deadline || null,
+  });
+
+export const addExpenseToBudget = (data) =>
+  api.post(`/dashboard/budgets/${data.budget_id}/add-expense`, {
+    amount: Number(data.amount),
+  });
+
+// --- Updating Data ---
+export const updateTransaction = (id, data) =>
+  api.put(`/dashboard/transactions/${id}`, data);
+
 export const updateBudget = (data) =>
   api.put(`/dashboard/budgets/${data.id}`, {
     category: data.category,
@@ -84,30 +97,21 @@ export const updateBudget = (data) =>
     description: data.description || "", // optional description
   });
 
-export const deleteBudget = (id) => api.delete(`/dashboard/budgets/${id}`);
-
-// --- Add expense directly to a budget ---
-export const addExpenseToBudget = (data) =>
-  api.post(`/dashboard/budgets/${data.budget_id}/add-expense`, {
-    amount: Number(data.amount),
-  });
-
-// --- Savings Goals ---
-export const fetchGoals = () => api.get("/dashboard/savings-goals");
-export const addGoal = (data) =>
-  api.post("/dashboard/savings-goals", {
-    title: data.title,
-    target_amount: Number(data.target_amount),
-    deadline: data.deadline || null,
-  });
 export const updateGoal = (id, data) =>
   api.put(`/dashboard/savings-goals/${id}`, {
     title: data.title,
     target_amount: Number(data.target_amount),
     deadline: data.deadline || null,
   });
+
+// --- Deleting Data ---
+export const deleteTransaction = (id) =>
+  api.delete(`/dashboard/transactions/${id}`);
+
+export const deleteBudget = (id) => api.delete(`/dashboard/budgets/${id}`);
+
 export const deleteGoal = (id) => api.delete(`/dashboard/savings-goals/${id}`);
 
-// --- Reports ---
-export const fetchReports = () => api.get("/dashboard/reports");
+// --- Reports Data ---
+
 export const generateReport = (data) => api.post("/dashboard/reports", data);

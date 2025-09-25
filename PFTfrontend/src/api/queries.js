@@ -27,11 +27,12 @@ const useFetch = (key, fetchFn) =>
 
 // ------------------ QUERIES ------------------
 export const useProfile = () => useFetch("profile", fetchProfile);
-export const useTransactions = () =>
-  useFetch("transactions", fetchTransactions);
+
+export const useTransactions = () => useFetch("transactions", fetchTransactions);
+
 export const useBudgets = () => useFetch("budgets", fetchBudgets);
+
 export const useGoals = () => useFetch("goals", fetchGoals);
-export const useReports = () => useFetch("reports", fetchReports);
 
 // ------------------ ADD MUTATIONS ------------------
 export const useAddTransaction = () => {
@@ -40,7 +41,6 @@ export const useAddTransaction = () => {
     mutationFn: addTransaction,
     onSuccess: () => {
       queryClient.invalidateQueries(["transactions"]);
-      queryClient.invalidateQueries(["reports"]);
     },
   });
 };
@@ -61,7 +61,6 @@ export const useAddGoal = () => {
   });
 };
 
-// 🔥 New mutation: Add expense to a specific budget
 export const useAddExpenseToBudget = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -69,7 +68,6 @@ export const useAddExpenseToBudget = () => {
     onSuccess: () => {
       queryClient.invalidateQueries(["budgets"]);
       queryClient.invalidateQueries(["transactions"]);
-      queryClient.invalidateQueries(["reports"]);
     },
   });
 };
@@ -81,7 +79,6 @@ export const useUpdateTransaction = () => {
     mutationFn: ({ id, data }) => updateTransaction(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries(["transactions"]);
-      queryClient.invalidateQueries(["reports"]);
     },
   });
 };
@@ -109,7 +106,6 @@ export const useDeleteTransaction = () => {
     mutationFn: deleteTransaction,
     onSuccess: () => {
       queryClient.invalidateQueries(["transactions"]);
-      queryClient.invalidateQueries(["reports"]);
     },
   });
 };

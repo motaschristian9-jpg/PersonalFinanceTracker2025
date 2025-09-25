@@ -12,6 +12,7 @@ class DashboardController extends Controller
     // -------------------
     // Transactions
     // -------------------
+
     public function transactions(Request $request)
     {
         $transactions = Transaction::where('user_id', $request->user()->id)
@@ -89,6 +90,7 @@ class DashboardController extends Controller
     // -------------------
     // Budgets
     // -------------------
+
     public function budgets(Request $request)
     {
         $budgets = Budget::where('user_id', $request->user()->id)->get();
@@ -102,7 +104,7 @@ class DashboardController extends Controller
             'amount' => 'required|numeric|min:0',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
-            'description' => 'nullable|string|max:1000', // optional description
+            'description' => 'nullable|string|max:1000',
         ]);
 
         $budget = Budget::create([
@@ -111,7 +113,7 @@ class DashboardController extends Controller
             'amount' => $request->amount,
             'start_date' => $request->start_date,
             'end_date' => $request->end_date,
-            'description' => $request->description ?? null, // set to null if not provided
+            'description' => $request->description ?? null,
         ]);
 
         return response()->json([
@@ -119,7 +121,6 @@ class DashboardController extends Controller
             'budget' => $budget,
         ]);
     }
-
 
     public function updateBudget(Request $request, $id)
     {
@@ -135,14 +136,14 @@ class DashboardController extends Controller
             'amount' => 'required|numeric|min:0',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
-            'description' => 'nullable|string|max:255', // new optional field
+            'description' => 'nullable|string|max:255',
         ]);
 
         $budget->update([
             'amount' => $request->amount,
             'start_date' => $request->start_date,
             'end_date' => $request->end_date,
-            'description' => $request->description ?? null, // handle optional description
+            'description' => $request->description ?? null,
         ]);
 
         return response()->json([
@@ -150,66 +151,6 @@ class DashboardController extends Controller
             'budget' => $budget,
         ]);
     }
-
-
-    // Add an expense to a specific budget
-    public function budgetTransactions(Request $request, $budgetId)
-    {
-        $budget = Budget::where('budget_id', $budgetId)
-            ->where('user_id', $request->user()->id)
-            ->first();
-
-        if (!$budget) {
-            return response()->json(['message' => 'Budget not found'], 404);
-        }
-
-        // Fetch transactions tied to this budget's category
-        $transactions = Transaction::where('user_id', $request->user()->id)
-            ->where('category', $budget->category) // match category to budget
-            ->orderBy('transaction_date', 'desc')
-            ->get();
-
-        return response()->json([
-            'budget' => $budget,
-            'transactions' => $transactions,
-        ]);
-    }
-
-    public function addExpenseToBudget(Request $request, $budgetId)
-    {
-        // Find the budget for the logged-in user
-        $budget = Budget::where('budget_id', $budgetId)
-            ->where('user_id', $request->user()->id)
-            ->first();
-
-        if (!$budget) {
-            return response()->json(['message' => 'Budget not found'], 404);
-        }
-
-        // Validate the request
-        $request->validate([
-            'amount' => 'required|numeric|min:0',
-            'transaction_date' => 'nullable|date', // optional
-        ]);
-
-        $transaction = Transaction::create([
-            'user_id' => $request->user()->id,
-            'budget_id' => $budget->budget_id, // link transaction to the budget
-            'type' => 'Expense',
-            'category' => $budget->category,
-            'amount' => $request->amount,
-            'transaction_date' => $request->transaction_date ?? now(), // current date if not provided
-            'description' => $request->description ?? '',
-        ]);
-
-
-
-        return response()->json([
-            'message' => 'Expense added to budget successfully',
-            'transaction' => $transaction,
-        ]);
-    }
-
 
     public function deleteBudget($id)
     {
@@ -226,9 +167,62 @@ class DashboardController extends Controller
         return response()->json(['message' => 'Budget deleted successfully']);
     }
 
+    public function budgetTransactions(Request $request, $budgetId)
+    {
+        $budget = Budget::where('budget_id', $budgetId)
+            ->where('user_id', $request->user()->id)
+            ->first();
+
+        if (!$budget) {
+            return response()->json(['message' => 'Budget not found'], 404);
+        }
+
+        $transactions = Transaction::where('user_id', $request->user()->id)
+            ->where('category', $budget->category) 
+            ->orderBy('transaction_date', 'desc')
+            ->get();
+
+        return response()->json([
+            'budget' => $budget,
+            'transactions' => $transactions,
+        ]);
+    }
+
+    public function addExpenseToBudget(Request $request, $budgetId)
+    {
+        $budget = Budget::where('budget_id', $budgetId)
+            ->where('user_id', $request->user()->id)
+            ->first();
+
+        if (!$budget) {
+            return response()->json(['message' => 'Budget not found'], 404);
+        }
+
+        $request->validate([
+            'amount' => 'required|numeric|min:0',
+            'transaction_date' => 'nullable|date',
+        ]);
+
+        $transaction = Transaction::create([
+            'user_id' => $request->user()->id,
+            'budget_id' => $budget->budget_id,
+            'type' => 'Expense',
+            'category' => $budget->category,
+            'amount' => $request->amount,
+            'transaction_date' => $request->transaction_date ?? now(),
+            'description' => $request->description ?? '',
+        ]);
+
+        return response()->json([
+            'message' => 'Expense added to budget successfully',
+            'transaction' => $transaction,
+        ]);
+    }
+
     // -------------------
     // Savings Goals
     // -------------------
+
     public function goals(Request $request)
     {
         $goals = SavingsGoal::where('user_id', $request->user()->id)->get();
@@ -260,6 +254,7 @@ class DashboardController extends Controller
     // -------------------
     // Reports
     // -------------------
+    
     public function reports(Request $request)
     {
         $userId = $request->user()->id;

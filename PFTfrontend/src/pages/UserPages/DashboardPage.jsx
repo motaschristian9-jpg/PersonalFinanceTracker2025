@@ -1,9 +1,8 @@
+import Swal from "sweetalert2";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import DashboardLayout from "../../layouts/DashboardLayout";
 import { PlusCircle, MinusCircle, PieChart, Target } from "lucide-react";
-import Swal from "sweetalert2";
-
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   PieChart as RePieChart,
   Pie,
@@ -18,6 +17,8 @@ import {
   Legend,
 } from "recharts";
 
+import ModalForm from "../../components/ModalForm";
+import DashboardLayout from "../../layouts/DashboardLayout";
 import {
   fetchTransactions,
   fetchBudgets,
@@ -29,16 +30,13 @@ import {
   addGoal,
 } from "../../api/api";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import ModalForm from "../../components/ModalForm";
-
 export default function Dashboard() {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState(null);
 
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalType, setModalType] = useState(""); // 'income', 'expense', 'budget', 'goal'
+  const [modalType, setModalType] = useState("");
   const [formData, setFormData] = useState({});
 
   const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444"];

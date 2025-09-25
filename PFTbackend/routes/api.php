@@ -25,7 +25,6 @@ Route::middleware([JWTMiddleware::class])->group(function () {
     // User
     Route::get('profile', [AuthController::class, 'profile']);
     Route::post('logout', [AuthController::class, 'logout']);
-    Route::post('refresh', [AuthController::class, 'refresh']);
 
     // Dashboard
     Route::prefix('dashboard')->group(function () {
@@ -40,12 +39,8 @@ Route::middleware([JWTMiddleware::class])->group(function () {
         Route::post('budgets', [DashboardController::class, 'storeBudget']);
         Route::put('budgets/{id}', [DashboardController::class, 'updateBudget']);
         Route::delete('budgets/{id}', [DashboardController::class, 'deleteBudget']);
-
-        // 🔥 New route for mini transaction history per budget
         Route::get('budgets/{id}/transactions', [DashboardController::class, 'budgetTransactions']);
-        // Add an expense to a specific budget
         Route::post('budgets/{id}/add-expense', [DashboardController::class, 'addExpenseToBudget']);
-
 
         // Savings Goals
         Route::get('savings-goals', [DashboardController::class, 'goals']);

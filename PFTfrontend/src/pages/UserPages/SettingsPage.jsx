@@ -1,6 +1,6 @@
 // src/pages/UserPages/SettingsPage.jsx
 import React from "react";
-import DashboardLayout from "../../layouts/DashboardLayout";
+import DashboardLayout from "../../layouts/UserLayout";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 

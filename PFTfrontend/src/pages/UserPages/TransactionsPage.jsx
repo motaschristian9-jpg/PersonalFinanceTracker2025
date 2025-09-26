@@ -1,5 +1,5 @@
 import { useState } from "react";
-import DashboardLayout from "../../layouts/DashboardLayout";
+import DashboardLayout from "../../layouts/UserLayout";
 import { PlusCircle, MinusCircle, Edit, Trash, Loader2, Search, Filter } from "lucide-react";
 import ModalForm from "../../components/ModalForm";
 import Swal from "sweetalert2";

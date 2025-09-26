@@ -1,6 +1,6 @@
 // src/pages/UserPages/BudgetsPage.jsx
 import React, { useState } from "react";
-import DashboardLayout from "../../layouts/DashboardLayout";
+import DashboardLayout from "../../layouts/UserLayout";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Progress } from "../../components/ui/progress";

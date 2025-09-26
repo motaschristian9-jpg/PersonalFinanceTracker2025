@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query"; // <-- import this
+import { useQueryClient } from "@tanstack/react-query";
 import ModalForm from "../components/ModalForm";
 import {
   LayoutDashboard,
@@ -17,8 +17,8 @@ import {
   User,
 } from "lucide-react";
 
-export default function DashboardLayout({ children }) {
-  const queryClient = useQueryClient(); // <-- initialize queryClient
+export default function UserLayout({ children }) {
+  const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     const saved = localStorage.getItem("sidebarOpen");
     return saved !== null ? JSON.parse(saved) : true;
@@ -31,18 +31,12 @@ export default function DashboardLayout({ children }) {
   const location = useLocation();
 
   const handleLogout = () => {
-    // Remove local/session storage
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     sessionStorage.removeItem("token");
     sessionStorage.removeItem("user");
 
-    // Clear all React Query cache
-    queryClient.clear(); // <-- this will remove all cached data
-
-    // Optionally reset active queries if you want
-    // queryClient.resetQueries();
-
+    queryClient.clear();
     navigate("/login");
   };
 

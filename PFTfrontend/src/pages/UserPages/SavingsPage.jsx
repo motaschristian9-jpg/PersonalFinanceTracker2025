@@ -1,6 +1,6 @@
 // src/pages/UserPages/SavingsPage.jsx
 import { useState, useEffect, useMemo } from "react";
-import DashboardLayout from "../../layouts/DashboardLayout";
+import DashboardLayout from "../../layouts/UserLayout";
 import { Button } from "../../components/ui/button";
 import {
   Card,

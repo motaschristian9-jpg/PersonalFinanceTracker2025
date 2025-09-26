@@ -18,7 +18,7 @@ import {
 } from "recharts";
 
 import ModalForm from "../../components/ModalForm";
-import DashboardLayout from "../../layouts/DashboardLayout";
+import DashboardLayout from "../../layouts/UserLayout";
 import {
   fetchTransactions,
   fetchBudgets,

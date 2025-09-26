@@ -276,13 +276,13 @@ const BudgetsPage = () => {
 
   if (budgetsLoading)
     return (
-      <DashboardLayout>
+      <div>
         <p className="p-6">Loading budgets...</p>
-      </DashboardLayout>
+      </div>
     );
 
   return (
-    <DashboardLayout>
+    <div>
       {/* Page Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">📊 Budgets</h1>
@@ -492,7 +492,7 @@ const BudgetsPage = () => {
           onDeleteTransaction={handleDeleteTransaction} // add this
         />
       )}
-    </DashboardLayout>
+    </div>
   );
 };
 

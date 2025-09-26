@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate, useLocation, Outlet } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ModalForm from "../components/ModalForm";
 import {
   LayoutDashboard,
@@ -16,14 +16,20 @@ import {
   LogOut,
   User,
 } from "lucide-react";
+import {
+  fetchProfile,
+  fetchTransactions,
+  fetchBudgets,
+  fetchGoals,
+  fetchReports,
+} from "../api/api"; // adjust path to your fetch functions
 
-export default function UserLayout({ children }) {
+export default function UserLayout() {
   const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     const saved = localStorage.getItem("sidebarOpen");
     return saved !== null ? JSON.parse(saved) : true;
   });
-
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -57,6 +63,41 @@ export default function UserLayout({ children }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // --- React Query: Fetch all necessary data ---
+  const { data: user, isLoading: profileLoading } = useQuery({
+    queryKey: ["profile"],
+    queryFn: async () => (await fetchProfile()).data,
+  });
+
+  const { data: transactions = [], isLoading: transactionsLoading } = useQuery({
+    queryKey: ["transactions"],
+    queryFn: async () => (await fetchTransactions()).data,
+  });
+
+  const { data: budgets = [], isLoading: budgetsLoading } = useQuery({
+    queryKey: ["budgets"],
+    queryFn: async () => (await fetchBudgets()).data,
+  });
+
+  const { data: goals = [], isLoading: goalsLoading } = useQuery({
+    queryKey: ["goals"],
+    queryFn: async () => (await fetchGoals()).data,
+  });
+
+  const { data: reports = [], isLoading: reportsLoading } = useQuery({
+    queryKey: ["reports"],
+    queryFn: async () => (await fetchReports()).data,
+  });
+
+  // --- Global loading check ---
+  const loading =
+    profileLoading ||
+    transactionsLoading ||
+    budgetsLoading ||
+    goalsLoading ||
+    reportsLoading;
+
+  // --- Menu items ---
   const menuItems = [
     {
       label: "Dashboard",
@@ -71,6 +112,14 @@ export default function UserLayout({ children }) {
     { label: "Reports", icon: <BarChart2 size={20} />, path: "/reports" },
     { label: "Settings", icon: <Settings size={20} />, path: "/settings" },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-gray-600 text-lg">
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -117,6 +166,7 @@ export default function UserLayout({ children }) {
         </nav>
       </aside>
 
+      {/* Main content */}
       <div className="flex-1 flex flex-col">
         <header className="flex items-center justify-between bg-white border-b px-6 py-3">
           <div className="flex items-center bg-gray-100 rounded-lg px-3 py-1">
@@ -157,7 +207,10 @@ export default function UserLayout({ children }) {
           </div>
         </header>
 
-        <main className="flex-1 p-6 space-y-6">{children}</main>
+        {/* Outlet for child pages, passing fetched data via context */}
+        <main className="flex-1 p-6 space-y-6">
+          <Outlet context={{ user, transactions, budgets, goals, reports }} />
+        </main>
 
         <footer className="border-t bg-gray-50 py-6 px-4 text-center text-sm text-gray-500">
           © 2025 MoneyTracker · Follow us:

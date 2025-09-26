@@ -181,7 +181,7 @@ export default function IncomePage() {
       ).size || 0;
 
   return (
-    <DashboardLayout>
+    <div>
       {/* Page Title & Quick Actions */}
       <section className="flex items-center justify-between">
         <div>
@@ -371,6 +371,6 @@ export default function IncomePage() {
         onClose={() => setModalOpen(false)}
         onSubmit={handleSubmit}
       />
-    </DashboardLayout>
+    </div>
   );
 }

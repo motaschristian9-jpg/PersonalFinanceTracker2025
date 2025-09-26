@@ -15,6 +15,7 @@ import Settings from "./pages/UserPages/SettingsPage";
 import Profile from "./pages/UserPages/ProfilePage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PublicRoute from "./components/PublicRoute";
+import UserLayout from "./layouts/UserLayout";
 
 function App() {
   return (
@@ -35,24 +36,24 @@ function App() {
           />
         ))}
 
-        {/* Protected Routes */}
-        {[
-          { path: "/dashboard", element: <Dashboard /> },
-          { path: "/transactions", element: <Transactions /> },
-          { path: "/income", element: <Income /> },
-          { path: "/expenses", element: <Expenses /> },
-          { path: "/budgets", element: <Budget /> },
-          { path: "/savings", element: <Savings /> },
-          { path: "/reports", element: <Reports /> },
-          { path: "/settings", element: <Settings /> },
-          { path: "/profile", element: <Profile /> },
-        ].map((route) => (
-          <Route
-            key={route.path}
-            path={route.path}
-            element={<ProtectedRoute>{route.element}</ProtectedRoute>}
-          />
-        ))}
+        {/* Protected Routes wrapped in UserLayout */}
+        <Route
+          element={
+            <ProtectedRoute>
+              <UserLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="transactions" element={<Transactions />} />
+          <Route path="income" element={<Income />} />
+          <Route path="expenses" element={<Expenses />} />
+          <Route path="budgets" element={<Budget />} />
+          <Route path="savings" element={<Savings />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="profile" element={<Profile />} />
+        </Route>
       </Routes>
     </Router>
   );

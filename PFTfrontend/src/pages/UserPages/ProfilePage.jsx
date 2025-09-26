@@ -6,7 +6,7 @@ import { Button } from "../../components/ui/button";
 
 const ProfilePage = () => {
   return (
-    <DashboardLayout activePage="settings">
+    <div>
       {/* Page Title */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">👤 Profile</h1>
@@ -66,7 +66,7 @@ const ProfilePage = () => {
           </div>
         </Card>
       </div>
-    </DashboardLayout>
+    </div>
   );
 };
 

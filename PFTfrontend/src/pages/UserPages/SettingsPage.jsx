@@ -6,7 +6,7 @@ import { Button } from "../../components/ui/button";
 
 const SettingsPage = () => {
   return (
-    <DashboardLayout activePage="settings">
+    <div>
       {/* Top Bar */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">⚙️ Settings</h1>
@@ -134,7 +134,7 @@ const SettingsPage = () => {
           <Button className="bg-red-600 hover:bg-red-700">Logout</Button>
         </Card>
       </div>
-    </DashboardLayout>
+    </div>
   );
 };
 

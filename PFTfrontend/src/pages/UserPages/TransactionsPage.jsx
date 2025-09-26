@@ -182,16 +182,16 @@ export default function Transactions() {
 
   if (isLoading)
     return (
-      <DashboardLayout>
+      <div>
         <div className="flex flex-col items-center justify-center p-10">
           <Loader2 className="w-10 h-10 animate-spin text-emerald-600 mb-4" />
           <p className="text-gray-600 text-lg">Loading transactions...</p>
         </div>
-      </DashboardLayout>
+      </div>
     );
 
   return (
-    <DashboardLayout>
+    <div>
       {/* Page Title & Quick Actions */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">📜 Transactions</h1>
@@ -342,6 +342,6 @@ export default function Transactions() {
         onClose={handleCloseModal}
         onSubmit={handleSubmit}
       />
-    </DashboardLayout>
+    </div>
   );
 }

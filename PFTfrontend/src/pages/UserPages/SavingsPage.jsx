@@ -162,7 +162,7 @@ export default function SavingsPage() {
   };
 
   return (
-    <DashboardLayout active="savings">
+    <div>
       {/* Top Bar */}
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-2">
@@ -369,6 +369,6 @@ export default function SavingsPage() {
           onSave={handleSaveGoal}
         />
       )}
-    </DashboardLayout>
+    </div>
   );
 }

@@ -203,7 +203,7 @@ export default function Dashboard() {
 
   // ================= Render =================
   return (
-    <DashboardLayout>
+    <div>
       {/* Welcome */}
       <section>
         <h1 className="text-2xl font-bold">Hello, {user?.name || "User"} 👋</h1>
@@ -467,6 +467,6 @@ export default function Dashboard() {
           })()}
         </ul>
       </section>
-    </DashboardLayout>
+    </div>
   );
 }

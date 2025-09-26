@@ -178,7 +178,7 @@ export default function ExpensesPage() {
       ).size || 0;
 
   return (
-    <DashboardLayout>
+    <div>
       {/* Page Title & Quick Actions */}
       <section className="flex items-center justify-between">
         <div>
@@ -371,6 +371,6 @@ export default function ExpensesPage() {
         onClose={() => setModalOpen(false)}
         onSubmit={handleSubmit}
       />
-    </DashboardLayout>
+    </div>
   );
 }

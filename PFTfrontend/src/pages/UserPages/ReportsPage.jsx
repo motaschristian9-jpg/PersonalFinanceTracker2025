@@ -36,7 +36,7 @@ const ReportsPage = () => {
   const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444"];
 
   return (
-    <DashboardLayout activePage="reports">
+    <div>
       {/* Topbar */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex space-x-2">
@@ -184,7 +184,7 @@ const ReportsPage = () => {
           </table>
         </Card>
       </div>
-    </DashboardLayout>
+    </div>
   );
 };
 

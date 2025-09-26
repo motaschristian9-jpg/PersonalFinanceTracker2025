@@ -1,8 +1,8 @@
 import Swal from "sweetalert2";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useOutletContext } from "react-router-dom";
 import { PlusCircle, MinusCircle, PieChart, Target } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   PieChart as RePieChart,
   Pie,
@@ -18,13 +18,8 @@ import {
 } from "recharts";
 
 import ModalForm from "../../components/ModalForm";
-import DashboardLayout from "../../layouts/UserLayout";
+import { useAddTransaction } from "../../api/queries";
 import {
-  fetchTransactions,
-  fetchBudgets,
-  fetchGoals,
-  fetchReports,
-  fetchProfile,
   addTransaction,
   addBudget,
   addGoal,
@@ -32,7 +27,7 @@ import {
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
-  const [editingId, setEditingId] = useState(null);
+  const { user, transactions, budgets, goals, reports } = useOutletContext();
 
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
@@ -42,44 +37,9 @@ export default function Dashboard() {
   const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444"];
 
   // ================= Queries =================
-  const { data: user, isLoading: profileLoading } = useQuery({
-    queryKey: ["profile"],
-    queryFn: async () => (await fetchProfile()).data,
-  });
-
-  const { data: transactions = [], isLoading: transactionsLoading } = useQuery({
-    queryKey: ["transactions"],
-    queryFn: async () => (await fetchTransactions()).data,
-  });
-
-  const { data: budgets = [], isLoading: budgetsLoading } = useQuery({
-    queryKey: ["budgets"],
-    queryFn: async () => (await fetchBudgets()).data,
-  });
-
-  const { data: goals = [], isLoading: goalsLoading } = useQuery({
-    queryKey: ["goals"],
-    queryFn: async () => (await fetchGoals()).data,
-  });
-
-  const { data: reports, isLoading: reportsLoading } = useQuery({
-    queryKey: ["reports"],
-    queryFn: async () => (await fetchReports()).data,
-  });
-
-  const loading =
-    profileLoading ||
-    transactionsLoading ||
-    budgetsLoading ||
-    goalsLoading ||
-    reportsLoading;
 
   // ================= Mutations =================
-  const addTransactionMutation = useMutation({
-    mutationFn: addTransaction,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["transactions"] }),
-  });
+  const addTransactionMutation = useAddTransaction();
 
   const transactionMutation = useMutation({
     mutationFn: addTransaction,
@@ -173,13 +133,6 @@ export default function Dashboard() {
     }
   };
 
-  if (loading) {
-    return (
-      <DashboardLayout>
-        <p className="p-6">Loading dashboard...</p>
-      </DashboardLayout>
-    );
-  }
 
   // ================= Chart Data =================
   const expenseData = transactions
@@ -320,7 +273,6 @@ export default function Dashboard() {
         type={modalType}
         formData={formData}
         setFormData={setFormData}
-        editingId={editingId}
         onClose={handleCloseModal}
         refetch={() =>
           queryClient.invalidateQueries([

@@ -54,13 +54,13 @@ export const fetchGoals = () => api.get("/dashboard/savings-goals");
 export const fetchReports = () => api.get("/dashboard/reports");
 
 // --- Adding Data ---
-export const addTransaction = (data) =>
+export const addTransaction = (txData) =>
   api.post("/dashboard/transactions", {
-    type: data.type?.toLowerCase() === "income" ? "Income" : "Expense",
-    category: data.category,
-    amount: Number(data.amount),
-    transaction_date: data.transaction_date,
-    description: data.description || "",
+    type: txData.type?.toLowerCase() === "income" ? "Income" : "Expense",
+    category: txData.category,
+    amount: Number(txData.amount),
+    transaction_date: txData.transaction_date,
+    description: txData.description || "",
   });
 
 export const addBudget = (data) =>

@@ -28,7 +28,8 @@ const useFetch = (key, fetchFn) =>
 // ------------------ QUERIES ------------------
 export const useProfile = () => useFetch("profile", fetchProfile);
 
-export const useTransactions = () => useFetch("transactions", fetchTransactions);
+export const useTransactions = () =>
+  useFetch("transactions", fetchTransactions);
 
 export const useBudgets = () => useFetch("budgets", fetchBudgets);
 
@@ -37,9 +38,22 @@ export const useGoals = () => useFetch("goals", fetchGoals);
 // ------------------ ADD MUTATIONS ------------------
 export const useAddTransaction = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: addTransaction,
-    onSuccess: () => {
+    onMutate: async (newTransaction) => {
+      await queryClient.cancelQueries(["transactions"]);
+      const previousTransactions = queryClient.getQueryData(["transactions"]);
+      queryClient.setQueryData(["transactions"], (old = []) => [
+        ...old,
+        { id: Date.now(), ...newTransaction },
+      ]);
+      return { previousTransactions };
+    },
+    onError: (err, newTransaction, context) => {
+      queryClient.setQueryData(["transactions"], context.previousTransactions);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries(["transactions"]);
     },
   });
@@ -75,9 +89,27 @@ export const useAddExpenseToBudget = () => {
 // ------------------ UPDATE MUTATIONS ------------------
 export const useUpdateTransaction = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: ({ id, data }) => updateTransaction(id, data),
-    onSuccess: () => {
+
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries(["transactions"]);
+
+      const previousTransactions = queryClient.getQueryData(["transactions"]);
+
+      queryClient.setQueryData(["transactions"], (old = []) =>
+        old.map((tx) => (tx.id === id ? { ...tx, ...data } : tx))
+      );
+
+      return { previousTransactions };
+    },
+
+    onError: (err, variables, context) => {
+      queryClient.setQueryData(["transactions"], context.previousTransactions);
+    },
+
+    onSettled: () => {
       queryClient.invalidateQueries(["transactions"]);
     },
   });
@@ -102,9 +134,27 @@ export const useUpdateGoal = () => {
 // ------------------ DELETE MUTATIONS ------------------
 export const useDeleteTransaction = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: deleteTransaction,
-    onSuccess: () => {
+
+    onMutate: async (id) => {
+      await queryClient.cancelQueries(["transactions"]);
+
+      const previousTransactions = queryClient.getQueryData(["transactions"]);
+
+      queryClient.setQueryData(["transactions"], (old = []) =>
+        old.filter((tx) => tx.id !== id)
+      );
+
+      return { previousTransactions };
+    },
+
+    onError: (err, id, context) => {
+      queryClient.setQueryData(["transactions"], context.previousTransactions);
+    },
+
+    onSettled: () => {
       queryClient.invalidateQueries(["transactions"]);
     },
   });

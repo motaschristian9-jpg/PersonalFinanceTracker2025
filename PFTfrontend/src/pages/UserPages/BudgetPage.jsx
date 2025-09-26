@@ -307,7 +307,11 @@ const BudgetsPage = () => {
           return (
             <div
               key={i}
-              className={`p-6 rounded-2xl border bg-white shadow-md hover:shadow-lg cursor-pointer border-t-4 border-${statusColor}-500 transition-all duration-300 flex flex-col md:flex-row justify-between`}
+              className="p-6 rounded-2xl border bg-white shadow-md hover:shadow-lg cursor-pointer transition-all duration-300 flex flex-col md:flex-row justify-between"
+              style={{
+                borderTopWidth: "4px",
+                borderTopColor: statusColor === "green" ? "#10B981" : "#EF4444",
+              }}
               onClick={() => {
                 setActiveBudget(null);
                 setTimeout(() => {
@@ -320,7 +324,7 @@ const BudgetsPage = () => {
                 <h2 className="font-semibold text-lg mb-3">
                   {b.category ?? "Unknown"}{" "}
                   <span className="text-gray-500 font-normal text-sm">
-                    ({b.description ? b.description : "No Description"})
+                    ({b.description || "No Description"})
                   </span>
                 </h2>
 
@@ -360,14 +364,14 @@ const BudgetsPage = () => {
                 />
 
                 <span
-                  className={`inline-block mt-2 px-3 py-1 text-sm font-medium rounded-full bg-${statusColor}-100 text-${statusColor}-800`}
+                  className={`inline-block mt-2 px-3 py-1 text-sm font-medium rounded-full ${
+                    statusColor === "green"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
                 >
                   {status}
                 </span>
-              </div>
-
-              <div className="md:pl-6 md:w-1/2 text-gray-600 text-sm mt-4 md:mt-0 flex items-center justify-center">
-                {/* Optional extra info */}
               </div>
             </div>
           );

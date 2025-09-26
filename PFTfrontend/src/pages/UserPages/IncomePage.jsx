@@ -285,9 +285,7 @@ export default function IncomePage() {
 
       {/* Income Table */}
       <section className="bg-white p-4 rounded-lg shadow-sm border">
-        {isLoading ? (
-          <p>Loading income...</p>
-        ) : (
+        <div className="max-h-56 overflow-y-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b text-gray-600">
@@ -338,7 +336,7 @@ export default function IncomePage() {
               )}
             </tbody>
           </table>
-        )}
+        </div>
       </section>
 
       {/* Income Summary */}

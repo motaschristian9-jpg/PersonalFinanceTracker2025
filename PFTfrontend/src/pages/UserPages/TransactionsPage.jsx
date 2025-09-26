@@ -1,50 +1,38 @@
 import { useState } from "react";
-import DashboardLayout from "../../layouts/UserLayout";
-import { PlusCircle, MinusCircle, Edit, Trash, Loader2, Search, Filter } from "lucide-react";
+import {
+  PlusCircle,
+  MinusCircle,
+  Edit,
+  Trash,
+  Loader2,
+  Search,
+  Filter,
+} from "lucide-react";
 import ModalForm from "../../components/ModalForm";
 import Swal from "sweetalert2";
-import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import {
-  fetchTransactions,
-  addTransaction,
-  updateTransaction,
-  deleteTransaction,
-} from "../../api/api";
+  useAddTransaction,
+  useDeleteTransaction,
+  useUpdateTransaction,
+} from "../../api/queries";
+import { useOutletContext } from "react-router-dom";
 
 export default function Transactions() {
-  const queryClient = useQueryClient();
+  const { transactions } = useOutletContext();
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalType, setModalType] = useState(""); // 'income' or 'expense'
+  const [modalType, setModalType] = useState("");
   const [formData, setFormData] = useState({});
-  const [editingId, setEditingId] = useState(null); // track editing transaction
-  const [filterType, setFilterType] = useState("all"); // 'all', 'income', 'expense'
-  const [searchText, setSearchText] = useState(""); // description search
-
-  // ================= Queries =================
-  const { data: transactions = [], isLoading } = useQuery({
-    queryKey: ["transactions"],
-    queryFn: async () => (await fetchTransactions()).data,
-  });
+  const [editingId, setEditingId] = useState(null);
+  const [filterType, setFilterType] = useState("all");
+  const [searchText, setSearchText] = useState("");
 
   // ================= Mutations =================
-  const addTransactionMutation = useMutation({
-    mutationFn: addTransaction,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["transactions"] }),
-  });
+  const addTransactionMutation = useAddTransaction();
 
-  const updateTransactionMutation = useMutation({
-    mutationFn: ({ id, data }) => updateTransaction(id, data),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["transactions"] }),
-  });
+  const updateTransactionMutation = useUpdateTransaction();
 
-  const deleteTransactionMutation = useMutation({
-    mutationFn: (id) => deleteTransaction(id),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["transactions"] }),
-  });
+  const deleteTransactionMutation = useDeleteTransaction();
 
   // ================= Modal Handlers =================
   const handleOpenModal = (type, transaction = null) => {
@@ -56,16 +44,14 @@ export default function Transactions() {
 
       setFormData({
         category: transaction.category,
-        customCategory: transaction.category,
         amount: transaction.amount,
         description: transaction.description || "",
-        transaction_date: transaction.transaction_date, // will be mapped correctly in handleSubmit
+        transaction_date: transaction.transaction_date,
       });
     } else {
       setEditingId(null);
       setFormData({
         category: "",
-        customCategory: "",
         amount: "",
         description: "",
         transac_date: "",
@@ -83,18 +69,17 @@ export default function Transactions() {
     setEditingId(null);
   };
 
-  const handleSubmit = async (data) => {
+  const handleSubmit = async (payload) => {
     try {
       const txData = {
         type: modalType === "income" ? "Income" : "Expense",
-        category: data.category,
-        amount: Number(data.amount),
-        transaction_date: data.transaction_date, // maps to backend
-        description: data.description || "",
+        category: payload.category,
+        amount: Number(payload.amount),
+        transaction_date: payload.transaction_date,
+        description: payload.description || "",
       };
 
       if (editingId) {
-        // Update transaction using PUT
         await updateTransactionMutation.mutateAsync({
           id: editingId,
           data: txData,
@@ -107,7 +92,6 @@ export default function Transactions() {
           confirmButtonColor: "#10B981",
         });
       } else {
-        // Add new transaction
         await addTransactionMutation.mutateAsync(txData);
 
         Swal.fire({
@@ -132,7 +116,7 @@ export default function Transactions() {
     }
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = (txId) => {
     Swal.fire({
       title: "Are you sure?",
       text: "This transaction will be deleted permanently!",
@@ -143,7 +127,7 @@ export default function Transactions() {
       confirmButtonText: "Yes, delete it!",
     }).then((result) => {
       if (result.isConfirmed) {
-        deleteTransactionMutation.mutate(id, {
+        deleteTransactionMutation.mutate(txId, {
           onSuccess: () => {
             Swal.fire("Deleted!", "Transaction has been deleted.", "success");
           },
@@ -179,16 +163,6 @@ export default function Transactions() {
     .reduce((acc, t) => acc + Number(t.amount), 0);
 
   const netBalance = totalIncome - totalExpenses;
-
-  if (isLoading)
-    return (
-      <div>
-        <div className="flex flex-col items-center justify-center p-10">
-          <Loader2 className="w-10 h-10 animate-spin text-emerald-600 mb-4" />
-          <p className="text-gray-600 text-lg">Loading transactions...</p>
-        </div>
-      </div>
-    );
 
   return (
     <div>
@@ -243,71 +217,77 @@ export default function Transactions() {
 
       {/* Transactions Table */}
       <div className="bg-white shadow rounded-lg overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="py-3 px-4 border-b">Date</th>
-              <th className="py-3 px-4 border-b">Category</th>
-              <th className="py-3 px-4 border-b">Description</th>
-              <th className="py-3 px-4 border-b">Amount</th>
-              <th className="py-3 px-4 border-b">Type</th>
-              <th className="py-3 px-4 border-b text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredTransactions.length === 0 ? (
+        <div className="max-h-64 overflow-y-auto">
+          {" "}
+          {/* smaller height */}
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-gray-100">
               <tr>
-                <td colSpan="6" className="text-center py-4 text-gray-500">
-                  No transactions found.
-                </td>
+                <th className="py-3 px-4 border-b">Date</th>
+                <th className="py-3 px-4 border-b">Category</th>
+                <th className="py-3 px-4 border-b">Description</th>
+                <th className="py-3 px-4 border-b">Amount</th>
+                <th className="py-3 px-4 border-b">Type</th>
+                <th className="py-3 px-4 border-b text-right">Actions</th>
               </tr>
-            ) : (
-              filteredTransactions.slice(0, 20).map((tx) => {
-                const txId = tx.id || tx._id || tx.transaction_id; // fallback if id is missing
-                return (
-                  <tr key={txId} className="hover:bg-gray-50">
-                    <td className="py-3 px-4 border-b">
-                      {tx.transaction_date
-                        ? new Date(tx.transaction_date).toLocaleDateString()
-                        : "-"}
-                    </td>
-                    <td className="py-3 px-4 border-b">{tx.category || "-"}</td>
-                    <td className="py-3 px-4 border-b">
-                      {tx.description || "-"}
-                    </td>
-                    <td
-                      className={`py-3 px-4 border-b ${
-                        tx.type?.toLowerCase() === "income"
-                          ? "text-green-600"
-                          : "text-red-500"
-                      }`}
-                    >
-                      {tx.type?.toLowerCase() === "income" ? "+" : "-"} ₱
-                      {Number(tx.amount || 0).toLocaleString()}
-                    </td>
-                    <td className="py-3 px-4 border-b">{tx.type || "-"}</td>
-                    <td className="py-3 px-4 border-b text-right space-x-2">
-                      <button
-                        className="text-blue-500 hover:text-blue-700"
-                        onClick={() =>
-                          handleOpenModal(tx.type?.toLowerCase(), tx)
-                        }
+            </thead>
+            <tbody>
+              {filteredTransactions.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="text-center py-4 text-gray-500">
+                    No transactions found.
+                  </td>
+                </tr>
+              ) : (
+                filteredTransactions.map((tx) => {
+                  const txId = tx.id || tx._id || tx.transaction_id;
+                  return (
+                    <tr key={txId} className="hover:bg-gray-50">
+                      <td className="py-3 px-4 border-b">
+                        {tx.transaction_date
+                          ? new Date(tx.transaction_date).toLocaleDateString()
+                          : "-"}
+                      </td>
+                      <td className="py-3 px-4 border-b">
+                        {tx.category || "-"}
+                      </td>
+                      <td className="py-3 px-4 border-b">
+                        {tx.description || "-"}
+                      </td>
+                      <td
+                        className={`py-3 px-4 border-b ${
+                          tx.type?.toLowerCase() === "income"
+                            ? "text-green-600"
+                            : "text-red-500"
+                        }`}
                       >
-                        <Edit size={18} />
-                      </button>
-                      <button
-                        className="text-red-500 hover:text-red-700"
-                        onClick={() => handleDelete(txId)}
-                      >
-                        <Trash size={18} />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                        {tx.type?.toLowerCase() === "income" ? "+" : "-"} ₱
+                        {Number(tx.amount || 0).toLocaleString()}
+                      </td>
+                      <td className="py-3 px-4 border-b">{tx.type || "-"}</td>
+                      <td className="py-3 px-4 border-b text-right space-x-2">
+                        <button
+                          className="text-blue-500 hover:text-blue-700"
+                          onClick={() =>
+                            handleOpenModal(tx.type?.toLowerCase(), tx)
+                          }
+                        >
+                          <Edit size={18} />
+                        </button>
+                        <button
+                          className="text-red-500 hover:text-red-700"
+                          onClick={() => handleDelete(txId)}
+                        >
+                          <Trash size={18} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Summary Cards */}

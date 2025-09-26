@@ -89,6 +89,7 @@ export default function ModalForm({
       }
 
       await onSubmit(payload);
+
       if (expenseAmount) setExpenseAmount("");
     } catch (err) {
       console.error("Form submission error:", err);
@@ -122,8 +123,8 @@ export default function ModalForm({
         </button>
 
         <h2 className="text-xl font-bold mb-4 capitalize">
-          {type === "income" && "Add Income"}
-          {type === "expense" && "Add Expense"}
+          {type === "income" && (editingId ? "Edit Income" : "Add Income")}
+          {type === "expense" && (editingId ? "Edit Expense" : "Add Expense")}
           {type === "budget" &&
             (selectedBudget
               ? `Budget: ${selectedBudget.category}`

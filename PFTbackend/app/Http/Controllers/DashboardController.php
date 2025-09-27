@@ -154,16 +154,11 @@ class DashboardController extends Controller
 
     public function deleteBudget($id)
     {
-        $budget = Budget::where('budget_id', $id)
-            ->where('user_id', auth()->id())
-            ->first();
-
+        $budget = Budget::where('budget_id', $id)->where('user_id', auth()->id())->first();
         if (!$budget) {
             return response()->json(['message' => 'Budget not found'], 404);
         }
-
         $budget->delete();
-
         return response()->json(['message' => 'Budget deleted successfully']);
     }
 
@@ -178,7 +173,7 @@ class DashboardController extends Controller
         }
 
         $transactions = Transaction::where('user_id', $request->user()->id)
-            ->where('category', $budget->category) 
+            ->where('category', $budget->category)
             ->orderBy('transaction_date', 'desc')
             ->get();
 
@@ -190,11 +185,21 @@ class DashboardController extends Controller
 
     public function addExpenseToBudget(Request $request, $budgetId)
     {
+        \Log::info('Add expense called', [
+            'budgetId' => $budgetId,
+            'userId' => optional($request->user())->id,
+            'requestData' => $request->all(),
+        ]);
+
         $budget = Budget::where('budget_id', $budgetId)
             ->where('user_id', $request->user()->id)
             ->first();
 
         if (!$budget) {
+            \Log::warning('Budget not found', [
+                'budgetId' => $budgetId,
+                'userId' => optional($request->user())->id
+            ]);
             return response()->json(['message' => 'Budget not found'], 404);
         }
 
@@ -254,7 +259,7 @@ class DashboardController extends Controller
     // -------------------
     // Reports
     // -------------------
-    
+
     public function reports(Request $request)
     {
         $userId = $request->user()->id;

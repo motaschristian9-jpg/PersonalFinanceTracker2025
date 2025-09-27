@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate, useLocation, Outlet } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import ModalForm from "../components/ModalForm";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   List,
@@ -16,13 +15,8 @@ import {
   LogOut,
   User,
 } from "lucide-react";
-import {
-  fetchProfile,
-  fetchTransactions,
-  fetchBudgets,
-  fetchGoals,
-  fetchReports,
-} from "../api/api"; // adjust path to your fetch functions
+
+import { useBudgets, useGoals, useProfile, useReports, useTransactions } from "../api/queries";
 
 export default function UserLayout() {
   const queryClient = useQueryClient();
@@ -64,30 +58,15 @@ export default function UserLayout() {
   }, []);
 
   // --- React Query: Fetch all necessary data ---
-  const { data: user, isLoading: profileLoading } = useQuery({
-    queryKey: ["profile"],
-    queryFn: async () => (await fetchProfile()).data,
-  });
+  const { data: user, isLoading: profileLoading } = useProfile();
 
-  const { data: transactions = [], isLoading: transactionsLoading } = useQuery({
-    queryKey: ["transactions"],
-    queryFn: async () => (await fetchTransactions()).data,
-  });
+  const { data: transactions, isLoading: transactionsLoading } = useTransactions();
 
-  const { data: budgets = [], isLoading: budgetsLoading } = useQuery({
-    queryKey: ["budgets"],
-    queryFn: async () => (await fetchBudgets()).data,
-  });
+  const { data: budgets, isLoading: budgetsLoading } = useBudgets();
 
-  const { data: goals = [], isLoading: goalsLoading } = useQuery({
-    queryKey: ["goals"],
-    queryFn: async () => (await fetchGoals()).data,
-  });
+  const { data: goals, isLoading: goalsLoading } = useGoals();
 
-  const { data: reports = [], isLoading: reportsLoading } = useQuery({
-    queryKey: ["reports"],
-    queryFn: async () => (await fetchReports()).data,
-  });
+  const { data: reports, isLoading: reportsLoading } = useReports();
 
   // --- Global loading check ---
   const loading =

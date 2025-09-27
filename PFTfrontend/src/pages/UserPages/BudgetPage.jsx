@@ -1,6 +1,5 @@
 // src/pages/UserPages/BudgetsPage.jsx
-import React, { useState } from "react";
-import DashboardLayout from "../../layouts/UserLayout";
+import { useState, useMemo } from "react";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Progress } from "../../components/ui/progress";
@@ -16,26 +15,22 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import Swal from "sweetalert2";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import ModalForm from "../../components/ModalForm";
 import BudgetCardModal from "../../components/BudgetCardModal";
 
+import { useOutletContext } from "react-router-dom";
 import {
-  fetchBudgets,
-  fetchTransactions,
-  addBudget,
-  updateBudget,
-  deleteBudget,
-  addExpenseToBudget,
-  deleteTransaction,
-} from "../../api/api";
+  useAddBudget,
+  useAddExpenseToBudget,
+  useDeleteBudget,
+  useDeleteTransaction,
+  useUpdateBudget,
+} from "../../api/queries";
 
-const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444"];
-
-const BudgetsPage = () => {
-  const queryClient = useQueryClient();
+export default function BudgetsPage() {
+  const { transactions, budgets } = useOutletContext();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [formData, setFormData] = useState({});
@@ -43,71 +38,40 @@ const BudgetsPage = () => {
   const [selectedBudget, setSelectedBudget] = useState(null);
   const [budgetModalOpen, setBudgetModalOpen] = useState(false);
   const [activeBudget, setActiveBudget] = useState(null);
+
+  const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444"];
   const MAX_BUDGETS = 5;
 
   const safeNumber = (n) => (typeof n === "number" ? n : 0);
 
-  // Fetch budgets
-  const { data: budgets = [], isLoading: budgetsLoading } = useQuery({
-    queryKey: ["budgets"],
-    queryFn: async () => {
-      const res = await fetchBudgets();
-      return res.data.map((b) => ({
-        ...b,
-        allocated: Number(b.amount) || 0,
-        description: b.description || "",
-      }));
-    },
-    refetchOnWindowFocus: false,
-  });
-
-  const { data: transactions = [] } = useQuery({
-    queryKey: ["transactions"],
-    queryFn: async () => {
-      const res = await fetchTransactions();
-      return res.data; // make sure this is the array of transactions
-    },
-    refetchOnWindowFocus: false,
-  });
-
-  // Helper: calculate spent per budget
   const budgetSpent = (budgetId) => {
     return transactions
       .filter((tx) => tx.budget_id === budgetId)
       .reduce((sum, tx) => sum + Number(tx.amount), 0);
   };
 
+  const chartData = useMemo(() => {
+    return budgets
+      .filter((b) => Number(b.amount) > 0)
+      .map((b) => ({
+        category: b.category,
+        allocated: Number(b.amount),
+        spent: transactions
+          .filter((tx) => tx.budget_id === b.budget_id)
+          .reduce((sum, tx) => sum + Number(tx.amount), 0),
+      }));
+  }, [budgets, transactions]);
+
   // Mutations
-  const budgetMutation = useMutation({
-    mutationFn: addBudget,
-    onSuccess: () => queryClient.invalidateQueries(["budgets"]),
-  });
+  const budgetMutation = useAddBudget();
 
-  const updateBudgetMutation = useMutation({
-    mutationFn: updateBudget,
-    onSuccess: () => queryClient.invalidateQueries(["budgets"]),
-  });
+  const updateBudgetMutation = useUpdateBudget();
 
-  const deleteBudgetMutation = useMutation({
-    mutationFn: deleteBudget,
-    onSuccess: () => queryClient.invalidateQueries(["budgets"]),
-  });
+  const deleteBudgetMutation = useDeleteBudget();
 
-  const addExpenseMutation = useMutation({
-    mutationFn: addExpenseToBudget,
-    onSuccess: () => {
-      queryClient.invalidateQueries(["budgets"]);
-      queryClient.invalidateQueries(["transactions"]);
-    },
-  });
+  const addExpenseMutation = useAddExpenseToBudget();
 
-  const deleteTransactionMutation = useMutation({
-    mutationFn: deleteTransaction, // make sure this is imported from your API file
-    onSuccess: () => {
-      queryClient.invalidateQueries(["transactions"]);
-      queryClient.invalidateQueries(["budgets"]);
-    },
-  });
+  const deleteTransactionMutation = useDeleteTransaction();
 
   // Handlers
   const handleDeleteTransaction = async (transaction) => {
@@ -131,18 +95,31 @@ const BudgetsPage = () => {
     }
   };
 
-  const handleAddExpense = async ({ budget_id, amount, description }) => {
-    try {
-      await addExpenseMutation.mutateAsync({
-        budget_id,
-        amount,
-        description,
+  const handleAddExpense = async ({ budget_id, amount }) => {
+    const localBudget = budgets.find((b) => b.budget_id === budget_id);
+    if (!localBudget) return false;
+
+    const spent = budgetSpent(budget_id);
+    const remaining = Number(localBudget.amount) - spent;
+
+    if (Number(amount) > remaining) {
+      Swal.fire({
+        icon: "error",
+        title: "Exceeded Budget",
+        text: `You only have ₱${remaining.toLocaleString()} remaining in this budget.`,
+        confirmButtonColor: "#EF4444",
       });
+      return false; // expense rejected
+    }
+
+    try {
+      await addExpenseMutation.mutateAsync({ budget_id, amount });
       Swal.fire({
         icon: "success",
         title: "Expense added!",
         confirmButtonColor: "#10B981",
       });
+      return true; // success
     } catch (error) {
       Swal.fire({
         icon: "error",
@@ -150,6 +127,7 @@ const BudgetsPage = () => {
         text: error.response?.data?.message || "Something went wrong.",
         confirmButtonColor: "#EF4444",
       });
+      return false; // failed
     }
   };
 
@@ -274,13 +252,6 @@ const BudgetsPage = () => {
     });
   };
 
-  if (budgetsLoading)
-    return (
-      <div>
-        <p className="p-6">Loading budgets...</p>
-      </div>
-    );
-
   return (
     <div>
       {/* Page Header */}
@@ -298,7 +269,8 @@ const BudgetsPage = () => {
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {budgets.map((b, i) => {
           const spent = budgetSpent(b.budget_id);
-          const allocated = safeNumber(b.allocated);
+          const allocated = Number(b.amount);
+
           const remaining = allocated - spent;
           const percent = Math.min((spent / allocated) * 100, 100);
           const statusColor = remaining > 0 ? "green" : "red";
@@ -315,7 +287,7 @@ const BudgetsPage = () => {
               onClick={() => {
                 setActiveBudget(null);
                 setTimeout(() => {
-                  setActiveBudget({ ...b, spent });
+                  setActiveBudget({ ...b, spent, remaining });
                   setBudgetModalOpen(true);
                 }, 50);
               }}
@@ -394,7 +366,7 @@ const BudgetsPage = () => {
             </thead>
             <tbody>
               {budgets.map((b, i) => {
-                const allocated = safeNumber(b.allocated);
+                const allocated = safeNumber(Number(b.amount));
                 const spent = budgetSpent(b.budget_id);
                 const remaining = allocated - spent;
                 return (
@@ -422,48 +394,40 @@ const BudgetsPage = () => {
 
       {/* Charts */}
       <div className="grid lg:grid-cols-2 gap-6 mb-8">
+        {/* Budget Distribution PieChart */}
         <Card className="p-4">
           <h2 className="font-semibold mb-4">Budget Distribution</h2>
           <PieChart width={350} height={300}>
             <Pie
-              data={budgets.filter((b) => b.allocated > 0)}
-              dataKey="allocated"
+              data={chartData}
+              dataKey="allocated" // fixed typo
               nameKey="category"
               outerRadius={120}
               fill="#8884d8"
               label
             >
-              {budgets
-                .filter((b) => b.allocated > 0)
-                .map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={COLORS[index % COLORS.length]}
-                  />
-                ))}
+              {chartData.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={COLORS[index % COLORS.length]}
+                />
+              ))}
             </Pie>
             <Tooltip />
           </PieChart>
         </Card>
 
+        {/* Budget vs Spending BarChart */}
         <Card className="p-4">
           <h2 className="font-semibold mb-4">Budget vs Spending</h2>
-          <BarChart
-            width={400}
-            height={300}
-            data={budgets.filter((b) => b.allocated > 0)}
-          >
+          <BarChart width={400} height={300} data={chartData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="category" />
             <YAxis />
             <Tooltip />
             <Legend />
             <Bar dataKey="allocated" fill="#3B82F6" name="Allocated" />
-            <Bar
-              dataKey={(b) => budgetSpent(b.budget_id)}
-              fill="#EF4444"
-              name="Spent"
-            />
+            <Bar dataKey="spent" fill="#EF4444" name="Spent" />
           </BarChart>
         </Card>
       </div>
@@ -498,6 +462,4 @@ const BudgetsPage = () => {
       )}
     </div>
   );
-};
-
-export default BudgetsPage;
+}

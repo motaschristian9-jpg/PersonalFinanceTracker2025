@@ -18,12 +18,18 @@ import {
 } from "./api";
 
 // ------------------ HELPER ------------------
-const useFetch = (key, fetchFn) =>
-  useQuery({
+const useFetch = (key, fetchFn, defaultValue = []) => {
+  const { data = defaultValue, ...rest } = useQuery({
     queryKey: [key],
-    queryFn: fetchFn,
+    queryFn: async () => {
+      const res = await fetchFn();
+      return res.data; // <-- unwrap once here
+    },
     refetchOnWindowFocus: false,
   });
+
+  return { data, ...rest };
+};
 
 // ------------------ QUERIES ------------------
 export const useProfile = () => useFetch("profile", fetchProfile);
@@ -34,6 +40,8 @@ export const useTransactions = () =>
 export const useBudgets = () => useFetch("budgets", fetchBudgets);
 
 export const useGoals = () => useFetch("goals", fetchGoals);
+
+export const useReports = () => useFetch("reports", fetchReports);
 
 // ------------------ ADD MUTATIONS ------------------
 export const useAddTransaction = () => {
@@ -61,9 +69,41 @@ export const useAddTransaction = () => {
 
 export const useAddBudget = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: addBudget,
-    onSuccess: () => queryClient.invalidateQueries(["budgets"]),
+
+    // Optimistic update
+    onMutate: async (newBudget) => {
+      await queryClient.cancelQueries({ queryKey: ["budgets"] });
+
+      const previousBudgets = queryClient.getQueryData(["budgets"]);
+
+      // Optimistically update cache
+      queryClient.setQueryData(["budgets"], (old = []) => [
+        ...old,
+        {
+          ...newBudget,
+          budget_id: Date.now(), // temporary ID until server responds
+          allocated: Number(newBudget.amount) || 0,
+          description: newBudget.description || "",
+        },
+      ]);
+
+      return { previousBudgets };
+    },
+
+    // Rollback if error
+    onError: (err, newBudget, context) => {
+      if (context?.previousBudgets) {
+        queryClient.setQueryData(["budgets"], context.previousBudgets);
+      }
+    },
+
+    // Always refetch to sync with server
+    onSettled: () => {
+      queryClient.invalidateQueries(["budgets"]);
+    },
   });
 };
 
@@ -77,9 +117,57 @@ export const useAddGoal = () => {
 
 export const useAddExpenseToBudget = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: addExpenseToBudget,
-    onSuccess: () => {
+
+    onMutate: async (newExpense) => {
+      await queryClient.cancelQueries(["budgets"]);
+      await queryClient.cancelQueries(["transactions"]);
+
+      const prevBudgets = queryClient.getQueryData(["budgets"]);
+      const prevTransactions = queryClient.getQueryData(["transactions"]);
+
+      // Optimistically update budgets
+      if (prevBudgets) {
+        queryClient.setQueryData(["budgets"], (old) =>
+          old.map((budget) =>
+            budget.id === newExpense.budgetId
+              ? {
+                  ...budget,
+                  expenses: [...(budget.expenses ?? []), newExpense], // ✅ safe spread
+                  spent: (budget.spent ?? 0) + newExpense.amount,
+                }
+              : budget
+          )
+        );
+      }
+
+      // Optimistically update transactions
+      if (prevTransactions) {
+        queryClient.setQueryData(["transactions"], (old) => [
+          ...old,
+          {
+            ...newExpense,
+            id: Date.now(), // temp id
+            type: "expense",
+          },
+        ]);
+      }
+
+      return { prevBudgets, prevTransactions };
+    },
+
+    onError: (_err, _newExpense, context) => {
+      if (context?.prevBudgets) {
+        queryClient.setQueryData(["budgets"], context.prevBudgets);
+      }
+      if (context?.prevTransactions) {
+        queryClient.setQueryData(["transactions"], context.prevTransactions);
+      }
+    },
+
+    onSettled: () => {
       queryClient.invalidateQueries(["budgets"]);
       queryClient.invalidateQueries(["transactions"]);
     },
@@ -117,9 +205,43 @@ export const useUpdateTransaction = () => {
 
 export const useUpdateBudget = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({ id, data }) => updateBudget(id, data),
-    onSuccess: () => queryClient.invalidateQueries(["budgets"]),
+    mutationFn: updateBudget,
+
+    onMutate: async (updatedBudget) => {
+      await queryClient.cancelQueries({ queryKey: ["budgets"] });
+
+      // Snapshot of current budgets before update
+      const previousBudgets = queryClient.getQueryData(["budgets"]);
+
+      // Optimistically update cache
+      queryClient.setQueryData(["budgets"], (old = []) =>
+        old.map((budget) =>
+          budget.budget_id === updatedBudget.id
+            ? {
+                ...budget,
+                ...updatedBudget,
+                allocated: Number(updatedBudget.amount) ?? budget.allocated,
+                description: updatedBudget.description ?? budget.description,
+              }
+            : budget
+        )
+      );
+
+      // Pass snapshot for rollback if error
+      return { previousBudgets };
+    },
+
+    onError: (err, newBudget, context) => {
+      if (context?.previousBudgets) {
+        queryClient.setQueryData(["budgets"], context.previousBudgets);
+      }
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries(["budgets"]);
+    },
   });
 };
 
@@ -162,9 +284,33 @@ export const useDeleteTransaction = () => {
 
 export const useDeleteBudget = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: deleteBudget,
-    onSuccess: () => queryClient.invalidateQueries(["budgets"]),
+
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["budgets"] });
+
+      // Snapshot before deletion
+      const previousBudgets = queryClient.getQueryData(["budgets"]);
+
+      // Optimistically remove budget
+      queryClient.setQueryData(["budgets"], (old = []) =>
+        old.filter((budget) => budget.budget_id !== id)
+      );
+
+      return { previousBudgets };
+    },
+
+    onError: (err, id, context) => {
+      if (context?.previousBudgets) {
+        queryClient.setQueryData(["budgets"], context.previousBudgets);
+      }
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries(["budgets"]);
+    },
   });
 };
 

@@ -14,15 +14,18 @@ export default function BudgetModal({
     budget || { allocated: 0, spent: 0, description: "" }
   );
   const [allocatedInput, setAllocatedInput] = useState(
-    localBudget.allocated?.toString() || ""
+    localBudget.amount?.toString() || ""
   );
-  const remaining =
-    (Number(allocatedInput) || 0) - Number(localBudget.spent || 0);
+
   const [isEditing, setIsEditing] = useState(false);
   const [expenseAmount, setExpenseAmount] = useState("");
   const [descriptionInput, setDescriptionInput] = useState(
     localBudget.description || ""
   );
+
+  const remaining = isEditing
+    ? Number(allocatedInput || 0) - Number(localBudget.spent || 0)
+    : Number(localBudget.amount || 0) - Number(localBudget.spent || 0);
 
   useEffect(() => {
     if (budget) {
@@ -50,18 +53,34 @@ export default function BudgetModal({
 
   const handleAddExpense = async () => {
     if (!expenseAmount || Number(expenseAmount) <= 0) return;
-    await onAddExpense({
+
+    // ✅ Check remaining locally before sending
+    const remainingAmount =
+      Number(localBudget.amount || 0) - Number(localBudget.spent || 0);
+    if (Number(expenseAmount) > remainingAmount) {
+      Swal.fire({
+        icon: "error",
+        title: "Exceeded Budget",
+        text: `You only have ₱${remainingAmount.toLocaleString()} remaining in this budget.`,
+        confirmButtonColor: "#EF4444",
+      });
+      return; // Stop submission
+    }
+
+    // Call parent handler
+    const success = await onAddExpense({
       budget_id: budget.budget_id,
       amount: Number(expenseAmount),
     });
 
-    // ✅ Update local spent immediately for realtime Remaining update
-    setLocalBudget((prev) => ({
-      ...prev,
-      spent: Number(prev.spent) + Number(expenseAmount),
-    }));
-
-    setExpenseAmount("");
+    // ✅ Only update spent if the expense was successfully added
+    if (success !== false) {
+      setLocalBudget((prev) => ({
+        ...prev,
+        spent: Number(prev.spent) + Number(expenseAmount),
+      }));
+      setExpenseAmount("");
+    }
   };
 
   return (
@@ -78,7 +97,9 @@ export default function BudgetModal({
         <div className="w-full md:w-1/2 pr-0 md:pr-6 border-b md:border-b-0 md:border-r mb-4 md:mb-0">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h2 className="text-xl font-bold">Budget: {budget.category}</h2>
+              <h2 className="text-xl font-bold">
+                Budget: {localBudget.category}
+              </h2>
               {!isEditing && (
                 <p className="text-gray-600 text-sm">
                   {localBudget.description || "No description"}
@@ -177,7 +198,7 @@ export default function BudgetModal({
                     Allocated:
                   </span>
                   <span className="text-sm font-semibold">
-                    ₱{Number(localBudget.allocated).toLocaleString()}
+                    ₱{Number(localBudget.amount).toLocaleString()}
                   </span>
                 </div>
 

@@ -95,7 +95,7 @@ export default function BudgetsPage() {
     }
   };
 
-  const handleAddExpense = async ({ budget_id, amount }) => {
+  const handleAddExpense = async ({ budget_id, amount, description }) => {
     const localBudget = budgets.find((b) => b.budget_id === budget_id);
     if (!localBudget) return false;
 
@@ -113,7 +113,7 @@ export default function BudgetsPage() {
     }
 
     try {
-      await addExpenseMutation.mutateAsync({ budget_id, amount });
+      await addExpenseMutation.mutateAsync({ budget_id, amount, description });
       Swal.fire({
         icon: "success",
         title: "Expense added!",

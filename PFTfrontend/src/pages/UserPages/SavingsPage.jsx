@@ -1,6 +1,6 @@
 // src/pages/UserPages/SavingsPage.jsx
 import { useState, useEffect, useMemo } from "react";
-import DashboardLayout from "../../layouts/UserLayout";
+import { useOutletContext } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import {
   Card,
@@ -24,45 +24,17 @@ import {
   Legend,
 } from "recharts";
 import SavingsCardModal from "../../components/SavingsCardModal"; // ✅ modal
-import { fetchGoals } from "../../api/api";
 import Swal from "sweetalert2";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAddGoal } from "../../api/queries";
 
 export default function SavingsPage() {
-  const [goals, setGoals] = useState([]);
+  const queryClient = useQueryClient();
+  const { user, transactions, budgets, goals, reports } = useOutletContext();
   const [selectedGoal, setSelectedGoal] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const queryClient = useQueryClient();
-
-  // ✅ Fetch savings goals
-  useEffect(() => {
-    fetchGoals();
-  }, []);
-
-  const fetchGoals = async () => {
-    try {
-      const res = await api.get("/dashboard/savings");
-      setGoals(res.data);
-    } catch (error) {
-      console.error("Error fetching goals:", error);
-      Swal.fire("Error", "Failed to fetch savings goals.", "error");
-    }
-  };
-
   // ✅ Mutations
-  const createGoalMutation = useMutation({
-    mutationFn: (newGoal) => api.post("/dashboard/savings", newGoal),
-    onSuccess: (res) => {
-      queryClient.invalidateQueries(["savings"]);
-      setGoals((prev) => [...prev, res.data]);
-      Swal.fire("Success!", "New savings goal created.", "success");
-      setIsModalOpen(false);
-    },
-    onError: () => {
-      Swal.fire("Error", "Failed to create the goal.", "error");
-    },
-  });
+  const createGoalMutation = useAddGoal();
 
   const updateGoalMutation = useMutation({
     mutationFn: (goalData) =>
@@ -119,9 +91,49 @@ export default function SavingsPage() {
   // ✅ Save goal (create or update) using mutations
   const handleSaveGoal = (goalData) => {
     if (goalData.goal_id) {
-      updateGoalMutation.mutate(goalData);
+      // Update existing goal
+      updateGoalMutation.mutate(goalData, {
+        onSuccess: (response) => {
+          Swal.fire({
+            icon: "success",
+            title: "Goal Updated",
+            text: "Your savings goal was updated successfully!",
+            showConfirmButton: true,
+            confirmButtonText: "OK",
+          });
+        },
+        onError: (error) => {
+          Swal.fire({
+            icon: "error",
+            title: "Update Failed",
+            text: error.response?.data?.message || "Something went wrong!",
+            showConfirmButton: true,
+            confirmButtonText: "OK",
+          });
+        },
+      });
     } else {
-      createGoalMutation.mutate(goalData);
+      // Create new goal
+      createGoalMutation.mutate(goalData, {
+        onSuccess: (response) => {
+          Swal.fire({
+            icon: "success",
+            title: "Goal Added",
+            text: "Your savings goal was added successfully!",
+            showConfirmButton: true,
+            confirmButtonText: "OK",
+          });
+        },
+        onError: (error) => {
+          Swal.fire({
+            icon: "error",
+            title: "Creation Failed",
+            text: error.response?.data?.message || "Something went wrong!",
+            showConfirmButton: true,
+            confirmButtonText: "OK",
+          });
+        },
+      });
     }
   };
 

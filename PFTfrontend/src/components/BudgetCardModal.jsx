@@ -71,6 +71,7 @@ export default function BudgetModal({
     const success = await onAddExpense({
       budget_id: budget.budget_id,
       amount: Number(expenseAmount),
+      description: "Budget Expense",
     });
 
     // ✅ Only update spent if the expense was successfully added

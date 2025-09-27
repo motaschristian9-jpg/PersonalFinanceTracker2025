@@ -206,6 +206,7 @@ class DashboardController extends Controller
         $request->validate([
             'amount' => 'required|numeric|min:0',
             'transaction_date' => 'nullable|date',
+            'description' => 'nullable|string|max:500',
         ]);
 
         $transaction = Transaction::create([

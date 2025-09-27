@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Swal from "sweetalert2";
+import { useOutletContext } from "react-router-dom";
 import DashboardLayout from "../../layouts/UserLayout";
 import {
   Minus,
@@ -23,6 +24,7 @@ import {
 
 export default function ExpensesPage() {
   const queryClient = useQueryClient();
+  const { user, transactions, budgets, goals, reports } = useOutletContext();
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -35,12 +37,6 @@ export default function ExpensesPage() {
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
-
-  // Fetch all transactions, then filter Expenses
-  const { data: transactions = [], isLoading } = useQuery({
-    queryKey: ["transactions"],
-    queryFn: async () => (await fetchTransactions()).data,
-  });
 
   const expenseTransactions = transactions.filter(
     (t) => t.type?.toLowerCase() === "expense"
@@ -283,9 +279,6 @@ export default function ExpensesPage() {
 
       {/* Expenses Table */}
       <section className="bg-white p-4 rounded-lg shadow-sm border">
-        {isLoading ? (
-          <p>Loading expenses...</p>
-        ) : (
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b text-gray-600">
@@ -338,7 +331,6 @@ export default function ExpensesPage() {
               )}
             </tbody>
           </table>
-        )}
       </section>
 
       {/* Expenses Summary */}

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Swal from "sweetalert2";
+import { useOutletContext } from "react-router-dom";
 import DashboardLayout from "../../layouts/UserLayout";
 import {
   Plus,
@@ -23,6 +24,7 @@ import {
 
 export default function IncomePage() {
   const queryClient = useQueryClient();
+  const { user, transactions, budgets, goals, reports } = useOutletContext();
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -36,11 +38,6 @@ export default function IncomePage() {
   const [customEnd, setCustomEnd] = useState("");
   const [sourceFilter, setSourceFilter] = useState("All Sources");
 
-  // Fetch all transactions, then filter Income
-  const { data: transactions = [], isLoading } = useQuery({
-    queryKey: ["transactions"],
-    queryFn: async () => (await fetchTransactions()).data,
-  });
 
   const incomeTransactions = transactions.filter(
     (t) => t.type?.toLowerCase() === "income"

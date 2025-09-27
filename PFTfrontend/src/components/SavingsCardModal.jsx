@@ -19,7 +19,7 @@ export default function SavingsCardModal({ goal, onClose, onSave }) {
   const handleSave = () => {
     onSave({
       ...localGoal,
-      target_amount: parseFloat(localGoal.target_amount) || 0,
+      target_amount: Number(localGoal.target_amount) || 0,
     });
     onClose();
   };

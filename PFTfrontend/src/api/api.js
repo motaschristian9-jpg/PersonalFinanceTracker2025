@@ -74,14 +74,18 @@ export const addBudget = (data) =>
 
 export const addGoal = (data) =>
   api.post("/dashboard/savings-goals", {
-    title: data.title,
+    title: data.goal_name,
     target_amount: Number(data.target_amount),
     deadline: data.deadline || null,
   });
 
+
+
 export const addExpenseToBudget = (data) =>
   api.post(`/dashboard/budgets/${data.budget_id}/add-expense`, {
+    title: data.title,
     amount: Number(data.amount),
+    description: data.description || "",
   });
 
 // --- Updating Data ---

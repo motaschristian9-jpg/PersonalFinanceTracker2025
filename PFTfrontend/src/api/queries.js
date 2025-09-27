@@ -109,9 +109,36 @@ export const useAddBudget = () => {
 
 export const useAddGoal = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: addGoal,
-    onSuccess: () => queryClient.invalidateQueries(["goals"]),
+    // Optimistic UI update
+    onMutate: async (newGoal) => {
+      // Cancel any outgoing refetches for "goals"
+      await queryClient.cancelQueries(["goals"]);
+
+      // Snapshot previous value
+      const previousGoals = queryClient.getQueryData(["goals"]);
+
+      // Optimistically update the cache
+      queryClient.setQueryData(["goals"], (oldGoals = []) => [
+        ...oldGoals,
+        newGoal,
+      ]);
+
+      // Return context with previous value for rollback
+      return { previousGoals };
+    },
+    // Rollback on error
+    onError: (err, newGoal, context) => {
+      if (context?.previousGoals) {
+        queryClient.setQueryData(["goals"], context.previousGoals);
+      }
+    },
+    // Always refetch after mutation
+    onSettled: () => {
+      queryClient.invalidateQueries(["goals"]);
+    },
   });
 };
 

@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 
 export default function SavingsCardModal({ goal, onClose, onSave }) {
   const [localGoal, setLocalGoal] = useState(
-    goal || { goal_name: "", target_amount: "", deadline: "" }
+    goal || { title: "", target_amount: "", deadline: "" }
   );
 
   useEffect(() => {
@@ -12,14 +12,22 @@ export default function SavingsCardModal({ goal, onClose, onSave }) {
       setLocalGoal({
         ...goal,
         target_amount: goal.target_amount === 0 ? "" : goal.target_amount,
+        title: goal.title || "",
+        deadline: goal.deadline || "",
       });
     }
   }, [goal]);
 
   const handleSave = () => {
+    if (!localGoal.title || localGoal.target_amount === "") {
+      alert("Please fill in the goal title and target amount.");
+      return;
+    }
+
     onSave({
       ...localGoal,
       target_amount: Number(localGoal.target_amount) || 0,
+      title: localGoal.title.trim(),
     });
     onClose();
   };
@@ -39,14 +47,14 @@ export default function SavingsCardModal({ goal, onClose, onSave }) {
           {goal ? "Edit Savings Goal" : "Add Savings Goal"}
         </h2>
 
-        {/* Goal Name */}
+        {/* Goal Title */}
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-1">Goal Name</label>
+          <label className="block text-sm font-medium mb-1">Goal Title</label>
           <input
             type="text"
-            value={localGoal.goal_name}
+            value={localGoal.title}
             onChange={(e) =>
-              setLocalGoal({ ...localGoal, goal_name: e.target.value })
+              setLocalGoal({ ...localGoal, title: e.target.value })
             }
             className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
             placeholder="e.g. New Laptop, Emergency Fund"

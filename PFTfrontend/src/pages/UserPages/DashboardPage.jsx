@@ -1,7 +1,17 @@
 import Swal from "sweetalert2";
 import { useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
-import { PlusCircle, MinusCircle, PieChart, Target } from "lucide-react";
+import {
+  PlusCircle,
+  MinusCircle,
+  PieChart,
+  Target,
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  Banknote,
+  Goal,
+} from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   PieChart as RePieChart,
@@ -19,11 +29,7 @@ import {
 
 import ModalForm from "../../components/ModalForm";
 import { useAddTransaction } from "../../api/queries";
-import {
-  addTransaction,
-  addBudget,
-  addGoal,
-} from "../../api/api";
+import { addTransaction, addBudget, addGoal } from "../../api/api";
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
@@ -133,7 +139,6 @@ export default function Dashboard() {
     }
   };
 
-
   // ================= Chart Data =================
   const expenseData = transactions
     .filter((t) => t.type?.toLowerCase() === "expense")
@@ -156,115 +161,208 @@ export default function Dashboard() {
 
   // ================= Render =================
   return (
-    <div>
-      {/* Welcome */}
-      <section>
-        <h1 className="text-2xl font-bold">Hello, {user?.name || "User"} 👋</h1>
-        <p className="text-gray-600">
-          Here’s your financial summary for{" "}
-          {new Date().toLocaleString("default", { month: "long" })}{" "}
-          {new Date().getFullYear()}.
-        </p>
+    <div className="space-y-8">
+      {/* Welcome Section */}
+      <section className="relative">
+        <div className="absolute -inset-1 bg-gradient-to-r from-green-200/30 to-green-300/20 rounded-2xl blur opacity-40"></div>
+        <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-green-100/50 p-6 lg:p-8">
+          <div className="flex items-center space-x-4">
+            <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <Wallet className="text-white" size={28} />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-800">
+                Hello,{" "}
+                <span className="bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
+                  {user?.name || "User"}
+                </span>{" "}
+                👋
+              </h1>
+              <p className="text-gray-600 mt-1">
+                Here's your financial summary for{" "}
+                <span className="font-medium text-green-700">
+                  {new Date().toLocaleString("default", { month: "long" })}{" "}
+                  {new Date().getFullYear()}
+                </span>
+              </p>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* Summary Cards */}
-      <section className="grid grid-cols-1 md:grid-cols-4 gap-4 my-4">
-        <div className="bg-white p-4 rounded-xl shadow">
-          💰 <h3 className="font-semibold">Total Income</h3>
-          <p className="text-xl font-bold">
-            ₱{Number(reports?.totalIncome || 0).toFixed(2)}
-          </p>
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+        <div className="relative group">
+          <div className="absolute -inset-1 bg-gradient-to-r from-green-200/30 to-green-300/20 rounded-xl blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
+          <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-green-100/50 p-6 hover:shadow-xl transition-shadow">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center">
+                <TrendingUp className="text-white" size={20} />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-700 text-sm">
+                  Total Income
+                </h3>
+                <p className="text-2xl font-bold text-gray-800">
+                  ₱{Number(reports?.totalIncome || 0).toFixed(2)}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow">
-          💸 <h3 className="font-semibold">Total Expenses</h3>
-          <p className="text-xl font-bold">
-            ₱{Number(reports?.totalExpenses || 0).toFixed(2)}
-          </p>
+
+        <div className="relative group">
+          <div className="absolute -inset-1 bg-gradient-to-r from-red-200/30 to-red-300/20 rounded-xl blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
+          <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-red-100/50 p-6 hover:shadow-xl transition-shadow">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-gradient-to-r from-red-500 to-red-600 rounded-lg flex items-center justify-center">
+                <TrendingDown className="text-white" size={20} />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-700 text-sm">
+                  Total Expenses
+                </h3>
+                <p className="text-2xl font-bold text-gray-800">
+                  ₱{Number(reports?.totalExpenses || 0).toFixed(2)}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow">
-          🏦 <h3 className="font-semibold">Net Savings</h3>
-          <p className="text-xl font-bold">
-            ₱{Number(reports?.balance || 0).toFixed(2)}
-          </p>
+
+        <div className="relative group">
+          <div className="absolute -inset-1 bg-gradient-to-r from-blue-200/30 to-blue-300/20 rounded-xl blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
+          <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-blue-100/50 p-6 hover:shadow-xl transition-shadow">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                <Banknote className="text-white" size={20} />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-700 text-sm">
+                  Net Savings
+                </h3>
+                <p className="text-2xl font-bold text-gray-800">
+                  ₱{Number(reports?.balance || 0).toFixed(2)}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow">
-          🎯 <h3 className="font-semibold">Savings Progress</h3>
-          <p className="text-xl font-bold">
-            {reports?.savingsProgress ? `${reports.savingsProgress}%` : "0%"}
-          </p>
+
+        <div className="relative group">
+          <div className="absolute -inset-1 bg-gradient-to-r from-purple-200/30 to-purple-300/20 rounded-xl blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
+          <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-purple-100/50 p-6 hover:shadow-xl transition-shadow">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <Goal className="text-white" size={20} />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-700 text-sm">
+                  Savings Progress
+                </h3>
+                <p className="text-2xl font-bold text-gray-800">
+                  {reports?.savingsProgress
+                    ? `${reports.savingsProgress}%`
+                    : "0%"}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Charts */}
-      <section className="grid md:grid-cols-2 gap-6 my-4">
-        <div className="bg-white p-4 rounded-xl shadow h-90">
-          <h3 className="font-semibold mb-2">Expense Breakdown</h3>
-          <div style={{ width: "100%", height: 300 }}>
-            <ResponsiveContainer>
-              <RePieChart>
-                <Pie
-                  data={expenseData}
-                  dataKey="value"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  label
-                >
-                  {expenseData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </RePieChart>
-            </ResponsiveContainer>
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="relative">
+          <div className="absolute -inset-1 bg-gradient-to-r from-green-200/30 to-green-300/20 rounded-2xl blur opacity-40"></div>
+          <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-green-100/50 p-6">
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">
+              Expense Breakdown
+            </h3>
+            <div style={{ width: "100%", height: 300 }}>
+              <ResponsiveContainer>
+                <RePieChart>
+                  <Pie
+                    data={expenseData}
+                    dataKey="value"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    label
+                  >
+                    {expenseData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </RePieChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl shadow h-90">
-          <h3 className="font-semibold mb-2">Income vs Expenses</h3>
-          <ResponsiveContainer width="100%" height="90%">
-            <BarChart data={incomeExpenseData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="income" fill="#10B981" />
-              <Bar dataKey="expenses" fill="#EF4444" />
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="relative">
+          <div className="absolute -inset-1 bg-gradient-to-r from-blue-200/30 to-blue-300/20 rounded-2xl blur opacity-40"></div>
+          <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-blue-100/50 p-6">
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">
+              Income vs Expenses
+            </h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={incomeExpenseData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="income" fill="#10B981" />
+                <Bar dataKey="expenses" fill="#EF4444" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </section>
 
       {/* Quick Actions */}
-      <section className="flex flex-wrap gap-4 my-4">
-        <button
-          className="flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg shadow hover:bg-emerald-700"
-          onClick={() => handleOpenModal("income")}
-        >
-          <PlusCircle size={18} className="mr-2" /> Add Income
-        </button>
-        <button
-          className="flex items-center px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600"
-          onClick={() => handleOpenModal("expense")}
-        >
-          <MinusCircle size={18} className="mr-2" /> Add Expense
-        </button>
-        <button
-          className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600"
-          onClick={() => handleOpenModal("budget")}
-        >
-          <PieChart size={18} className="mr-2" /> Add New Budget
-        </button>
-        <button
-          className="flex items-center px-4 py-2 bg-purple-500 text-white rounded-lg shadow hover:bg-purple-600"
-          onClick={() => handleOpenModal("goal")}
-        >
-          <Target size={18} className="mr-2" /> Add Savings Goal
-        </button>
+      <section className="relative">
+        <div className="absolute -inset-1 bg-gradient-to-r from-gray-200/30 to-gray-300/20 rounded-2xl blur opacity-40"></div>
+        <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-100/50 p-6 lg:p-8">
+          <h3 className="text-xl font-semibold text-gray-800 mb-6">
+            Quick Actions
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <button
+              className="flex items-center justify-center space-x-3 px-6 py-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300"
+              onClick={() => handleOpenModal("income")}
+            >
+              <PlusCircle size={20} />
+              <span className="font-medium">Add Income</span>
+            </button>
+            <button
+              className="flex items-center justify-center space-x-3 px-6 py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300"
+              onClick={() => handleOpenModal("expense")}
+            >
+              <MinusCircle size={20} />
+              <span className="font-medium">Add Expense</span>
+            </button>
+            <button
+              className="flex items-center justify-center space-x-3 px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300"
+              onClick={() => handleOpenModal("budget")}
+            >
+              <PieChart size={20} />
+              <span className="font-medium">Add Budget</span>
+            </button>
+            <button
+              className="flex items-center justify-center space-x-3 px-6 py-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300"
+              onClick={() => handleOpenModal("goal")}
+            >
+              <Target size={20} />
+              <span className="font-medium">Add Goal</span>
+            </button>
+          </div>
+        </div>
       </section>
 
       {/* Modal */}
@@ -286,138 +384,244 @@ export default function Dashboard() {
       />
 
       {/* Recent Transactions */}
-      <section className="bg-white rounded-xl shadow p-4 my-4">
-        <h3 className="font-semibold mb-4">Recent Transactions</h3>
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="text-gray-500 border-b">
-              <th className="py-2">Date</th>
-              <th className="py-2">Category</th>
-              <th className="py-2">Amount</th>
-              <th className="py-2">Type</th>
-            </tr>
-          </thead>
-          <tbody>
-            {transactions.length === 0 ? (
-              <tr>
-                <td colSpan="4" className="text-center text-gray-500 py-4">
-                  No transactions yet.
-                </td>
-              </tr>
-            ) : (
-              transactions.slice(0, 5).map((tx, index) => (
-                <tr key={tx.id || `tx-${index}`} className="hover:bg-gray-50">
-                  <td>{new Date(tx.transaction_date).toLocaleDateString()}</td>
-                  <td>{tx.category}</td>
-                  <td>₱{Number(tx.amount).toFixed(2)}</td>
-                  <td>{tx.type}</td>
+      <section className="relative">
+        <div className="absolute -inset-1 bg-gradient-to-r from-green-200/30 to-green-300/20 rounded-2xl blur opacity-40"></div>
+        <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-green-100/50 p-6 lg:p-8">
+          <h3 className="text-xl font-semibold text-gray-800 mb-6">
+            Recent Transactions
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="text-gray-600 border-b border-gray-200">
+                  <th className="py-3 font-semibold">Date</th>
+                  <th className="py-3 font-semibold">Category</th>
+                  <th className="py-3 font-semibold">Amount</th>
+                  <th className="py-3 font-semibold">Type</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-        <div className="mt-3 text-right">
-          <Link
-            to="/transactions"
-            className="text-emerald-600 hover:underline font-medium"
-          >
-            View All Transactions
-          </Link>
+              </thead>
+              <tbody>
+                {transactions.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" className="text-center text-gray-500 py-8">
+                      <div className="flex flex-col items-center space-y-2">
+                        <Wallet className="text-gray-300" size={48} />
+                        <span>No transactions yet.</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  transactions.slice(0, 5).map((tx, index) => (
+                    <tr
+                      key={tx.id || `tx-${index}`}
+                      className="hover:bg-green-50/50 transition-colors"
+                    >
+                      <td className="py-3">
+                        {new Date(tx.transaction_date).toLocaleDateString()}
+                      </td>
+                      <td className="py-3 font-medium">{tx.category}</td>
+                      <td className="py-3 font-bold">
+                        ₱{Number(tx.amount).toFixed(2)}
+                      </td>
+                      <td className="py-3">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            tx.type === "Income"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {tx.type}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-6 text-right">
+            <Link
+              to="/transactions"
+              className="inline-flex items-center space-x-2 text-green-600 hover:text-green-700 font-medium transition-colors duration-200"
+            >
+              <span>View All Transactions</span>
+              <span>→</span>
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* Savings & Budgets */}
-      <section className="grid md:grid-cols-2 gap-6 my-4">
-        <div className="bg-white rounded-xl shadow p-4">
-          <h3 className="font-semibold mb-2">Savings Goals</h3>
-          {goals.length === 0 ? (
-            <p className="text-gray-500">No goals yet.</p>
-          ) : (
-            goals.map((g, index) => (
-              <div key={g.goal_id || `goal-${index}`} className="mb-3">
-                <div className="bg-gray-100 rounded-full h-3 w-full mb-1">
-                  <div
-                    className="bg-emerald-600 h-3 rounded-full"
-                    style={{
-                      width: `${(g.current_amount / g.target_amount) * 100}%`,
-                    }}
-                  ></div>
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="relative">
+          <div className="absolute -inset-1 bg-gradient-to-r from-purple-200/30 to-purple-300/20 rounded-2xl blur opacity-40"></div>
+          <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-purple-100/50 p-6 lg:p-8">
+            <h3 className="text-xl font-semibold text-gray-800 mb-6">
+              Savings Goals
+            </h3>
+            <div className="space-y-4">
+              {goals.length === 0 ? (
+                <div className="text-center text-gray-500 py-8">
+                  <Target className="text-gray-300 mx-auto mb-3" size={48} />
+                  <p>No goals yet.</p>
                 </div>
-                <p className="text-sm text-gray-600">
-                  {g.title}:{" "}
-                  {Math.round((g.current_amount / g.target_amount) * 100)}%
-                  reached
-                </p>
-              </div>
-            ))
-          )}
+              ) : (
+                goals.map((g, index) => (
+                  <div key={g.goal_id || `goal-${index}`} className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-gray-800">
+                        {g.title}
+                      </span>
+                      <span className="text-sm font-medium text-purple-600">
+                        {Math.round((g.current_amount / g.target_amount) * 100)}
+                        %
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div
+                        className="bg-gradient-to-r from-purple-500 to-purple-600 h-3 rounded-full transition-all duration-500"
+                        style={{
+                          width: `${Math.min(
+                            (g.current_amount / g.target_amount) * 100,
+                            100
+                          )}%`,
+                        }}
+                      ></div>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      ₱{Number(g.current_amount || 0).toFixed(2)} of ₱
+                      {Number(g.target_amount || 0).toFixed(2)}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
-        <div className="bg-white rounded-xl shadow p-4">
-          <h3 className="font-semibold mb-2">Budget Categories</h3>
-          {budgets.length === 0 ? (
-            <p className="text-gray-500">No budgets yet.</p>
-          ) : (
-            budgets.map((b, index) => (
-              <p
-                key={b.id || `budget-${index}`}
-                className="text-sm text-gray-600"
-              >
-                {b.category}: ₱{b.limit} (spent ₱{b.spent})
-              </p>
-            ))
-          )}
+
+        <div className="relative">
+          <div className="absolute -inset-1 bg-gradient-to-r from-blue-200/30 to-blue-300/20 rounded-2xl blur opacity-40"></div>
+          <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-blue-100/50 p-6 lg:p-8">
+            <h3 className="text-xl font-semibold text-gray-800 mb-6">
+              Budget Categories
+            </h3>
+            <div className="space-y-3">
+              {budgets.length === 0 ? (
+                <div className="text-center text-gray-500 py-8">
+                  <PieChart className="text-gray-300 mx-auto mb-3" size={48} />
+                  <p>No budgets yet.</p>
+                </div>
+              ) : (
+                budgets.map((b, index) => (
+                  <div
+                    key={b.id || `budget-${index}`}
+                    className="flex justify-between items-center p-3 bg-blue-50/50 rounded-lg"
+                  >
+                    <span className="font-medium text-gray-800">
+                      {b.category}
+                    </span>
+                    <div className="text-right">
+                      <div className="text-sm font-bold text-blue-600">
+                        ₱{b.limit}
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        Spent: ₱{b.spent}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Notifications */}
-      <section className="bg-white rounded-xl shadow p-4 my-4">
-        <h3 className="font-semibold mb-2">Notifications</h3>
-        <ul className="text-sm text-gray-700">
-          {(() => {
-            const notifications = [];
+      <section className="relative">
+        <div className="absolute -inset-1 bg-gradient-to-r from-yellow-200/30 to-yellow-300/20 rounded-2xl blur opacity-40"></div>
+        <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-yellow-100/50 p-6 lg:p-8">
+          <h3 className="text-xl font-semibold text-gray-800 mb-6">
+            Notifications
+          </h3>
+          <div className="space-y-3">
+            {(() => {
+              const notifications = [];
 
-            budgets.forEach((b) => {
-              const percentSpent = (b.spent / b.limit) * 100;
-              if (percentSpent >= 100)
-                notifications.push({
-                  id: `budget-${b.id}-over`,
-                  message: `⚠️ You have overspent your ${b.category} budget!`,
-                });
-              else if (percentSpent >= 80)
-                notifications.push({
-                  id: `budget-${b.id}-warn`,
-                  message: `⚠️ You have used ${Math.floor(
-                    percentSpent
-                  )}% of your ${b.category} budget.`,
-                });
-            });
+              budgets.forEach((b) => {
+                const percentSpent = (b.spent / b.limit) * 100;
+                if (percentSpent >= 100)
+                  notifications.push({
+                    id: `budget-${b.id}-over`,
+                    message: `⚠️ You have overspent your ${b.category} budget!`,
+                    type: "error",
+                  });
+                else if (percentSpent >= 80)
+                  notifications.push({
+                    id: `budget-${b.id}-warn`,
+                    message: `⚠️ You have used ${Math.floor(
+                      percentSpent
+                    )}% of your ${b.category} budget.`,
+                    type: "warning",
+                  });
+              });
 
-            goals.forEach((g) => {
-              const progress = (g.current_amount / g.target_amount) * 100;
-              if (progress >= 100)
-                notifications.push({
-                  id: `goal-${g.goal_id}-complete`,
-                  message: `🎉 You’ve reached your savings goal: ${g.title}!`,
-                });
-              else if (progress >= 80)
-                notifications.push({
-                  id: `goal-${g.goal_id}-high`,
-                  message: `🎯 You’re ${Math.floor(progress)}% of the way to ${
-                    g.title
-                  }. Almost there!`,
-                });
-              else if (progress >= 50)
-                notifications.push({
-                  id: `goal-${g.goal_id}-mid`,
-                  message: `🎯 You’ve reached 50% of ${g.title}. Keep going!`,
-                });
-            });
+              goals.forEach((g) => {
+                const progress = (g.current_amount / g.target_amount) * 100;
+                if (progress >= 100)
+                  notifications.push({
+                    id: `goal-${g.goal_id}-complete`,
+                    message: `🎉 You've reached your savings goal: ${g.title}!`,
+                    type: "success",
+                  });
+                else if (progress >= 80)
+                  notifications.push({
+                    id: `goal-${g.goal_id}-high`,
+                    message: `🎯 You're ${Math.floor(
+                      progress
+                    )}% of the way to ${g.title}. Almost there!`,
+                    type: "info",
+                  });
+                else if (progress >= 50)
+                  notifications.push({
+                    id: `goal-${g.goal_id}-mid`,
+                    message: `🎯 You've reached 50% of ${g.title}. Keep going!`,
+                    type: "info",
+                  });
+              });
 
-            if (notifications.length === 0) return <li>No notifications</li>;
+              if (notifications.length === 0) {
+                return (
+                  <div className="text-center text-gray-500 py-4">
+                    <div className="flex flex-col items-center space-y-2">
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                        <span className="text-2xl">🔔</span>
+                      </div>
+                      <span>No notifications</span>
+                    </div>
+                  </div>
+                );
+              }
 
-            return notifications.map((n) => <li key={n.id}>{n.message}</li>);
-          })()}
-        </ul>
+              return notifications.map((n) => (
+                <div
+                  key={n.id}
+                  className={`p-4 rounded-lg border-l-4 ${
+                    n.type === "error"
+                      ? "bg-red-50 border-red-500 text-red-800"
+                      : n.type === "warning"
+                      ? "bg-yellow-50 border-yellow-500 text-yellow-800"
+                      : n.type === "success"
+                      ? "bg-green-50 border-green-500 text-green-800"
+                      : "bg-blue-50 border-blue-500 text-blue-800"
+                  }`}
+                >
+                  {n.message}
+                </div>
+              ));
+            })()}
+          </div>
+        </div>
       </section>
     </div>
   );

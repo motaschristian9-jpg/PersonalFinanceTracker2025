@@ -33,6 +33,10 @@ export default function SavingsPage() {
   const { user, transactions, budgets, goals, reports } = useOutletContext();
   const [selectedGoal, setSelectedGoal] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  console.log("isModalOpen:", isModalOpen);
+  const [activeGoal, setActiveGoal] = useState(null);
+  const [savingsModalOpen, setSavingsModalOpen] = useState(false);
+
   // ✅ Mutations
   const createGoalMutation = useAddGoal();
 
@@ -206,43 +210,74 @@ export default function SavingsPage() {
       </div>
 
       {/* Active Goals (Cards) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        {goals.map((goal) => {
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        {goals.map((goal, i) => {
           const remaining =
             Number(goal.target_amount) - Number(goal.current_amount);
-          const progress =
-            (Number(goal.current_amount) / Number(goal.target_amount)) * 100;
-          const status = getStatus(goal);
+          const progress = Math.min(
+            (Number(goal.current_amount) / Number(goal.target_amount)) * 100,
+            100
+          );
+          const statusColor = remaining > 0 ? "blue" : "red";
+          const status = remaining <= 0 ? "Completed" : "On Track";
+
           return (
-            <Card key={goal.goal_id}>
-              <CardHeader>
-                <CardTitle>{goal.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600">
-                  Target: ₱{Number(goal.target_amount).toLocaleString()}
-                </p>
-                <p className="text-sm text-gray-600">
-                  Saved: ₱{Number(goal.current_amount).toLocaleString()}
-                </p>
-                <p className="text-sm text-gray-600">
-                  Remaining: ₱{remaining.toLocaleString()}
-                </p>
-                <Progress value={progress} className="my-2" />
-                <p className="text-sm">Deadline: {goal.deadline || "N/A"}</p>
-                <p
-                  className={`text-sm font-semibold ${
-                    status === "Completed"
-                      ? "text-green-600"
-                      : status === "Behind"
-                      ? "text-red-600"
-                      : "text-blue-600"
+            <div
+              key={i}
+              className="p-6 rounded-2xl border bg-white shadow-md hover:shadow-lg cursor-pointer transition-all duration-300 flex flex-col md:flex-row justify-between"
+              style={{
+                borderTopWidth: "4px",
+                borderTopColor: statusColor === "blue" ? "#3B82F6" : "#EF4444",
+              }}
+              onClick={() => {
+                console.log("Clicked goal:", goal);
+                setActiveGoal(goal);
+                setSavingsModalOpen(true);
+              }}
+            >
+              <div className="mb-4 md:mb-0 md:w-1/2">
+                <h2 className="font-semibold text-lg mb-3">
+                  {goal.title ?? "Unknown Goal"}
+                </h2>
+
+                <div className="mb-3 space-y-1 text-sm text-gray-700">
+                  <p>
+                    <span className="font-medium">Target:</span> ₱
+                    {Number(goal.target_amount).toLocaleString()}
+                  </p>
+                  <p>
+                    <span className="font-medium">Saved:</span> ₱
+                    {Number(goal.current_amount).toLocaleString()}
+                  </p>
+                  <p>
+                    <span className="font-medium">Remaining:</span> ₱
+                    {remaining.toLocaleString()}
+                  </p>
+                </div>
+
+                <Progress
+                  value={progress}
+                  className="w-full h-3 rounded-full mt-2 mb-2"
+                />
+
+                <span
+                  className={`inline-block mt-2 px-3 py-1 text-sm font-medium rounded-full ${
+                    statusColor === "blue"
+                      ? "bg-blue-100 text-blue-800"
+                      : "bg-red-100 text-red-800"
                   }`}
                 >
-                  Status: {status}
+                  {status}
+                </span>
+
+                <p className="text-sm mt-2">
+                  Deadline:{" "}
+                  {goal.deadline
+                    ? new Date(goal.deadline).toLocaleDateString()
+                    : "N/A"}
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           );
         })}
       </div>

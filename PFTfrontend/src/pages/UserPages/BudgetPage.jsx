@@ -649,15 +649,6 @@ export default function BudgetsPage() {
                       <td className="py-4 px-6 text-right">
                         <div className="flex items-center justify-end space-x-2">
                           <button
-                            className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenModal(b);
-                            }}
-                          >
-                            <Edit size={16} />
-                          </button>
-                          <button
                             className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
                             onClick={(e) => {
                               e.stopPropagation();

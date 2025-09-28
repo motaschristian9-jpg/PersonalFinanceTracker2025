@@ -28,8 +28,9 @@ import {
 } from "recharts";
 
 import ModalForm from "../../components/ModalForm";
-import { useAddTransaction } from "../../api/queries";
-import { addTransaction, addBudget, addGoal } from "../../api/api";
+import SavingsCardModal from "../../components/SavingsCardModal";
+import { useAddTransaction, useAddGoal } from "../../api/queries";
+import { addTransaction, addBudget } from "../../api/api";
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
@@ -40,12 +41,15 @@ export default function Dashboard() {
   const [modalType, setModalType] = useState("");
   const [formData, setFormData] = useState({});
 
-  const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444"];
+  // Savings goal modal states (only for viewing existing goals)
+  const [savingsModalOpen, setSavingsModalOpen] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState(null);
 
-  // ================= Queries =================
+  const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444"];
 
   // ================= Mutations =================
   const addTransactionMutation = useAddTransaction();
+  const addGoalMutation = useAddGoal();
 
   const transactionMutation = useMutation({
     mutationFn: addTransaction,
@@ -57,23 +61,20 @@ export default function Dashboard() {
     onSuccess: () => queryClient.invalidateQueries(["budgets"]),
   });
 
-  const goalMutation = useMutation({
-    mutationFn: addGoal,
-    onSuccess: () => queryClient.invalidateQueries(["goals"]),
-  });
-
   // ================= Modal Handlers =================
   const handleOpenModal = (type) => {
-    setModalType(type); // "income", "expense", etc.
+    setModalType(type); // "income", "expense", "budget", "goal"
     setFormData({
       category: "",
       customCategory: "",
       amount: "",
       description: "",
-      transac_date: "",
+      transaction_date: "",
       title: "",
       target_amount: "",
       deadline: "",
+      start_date: "",
+      end_date: "",
     });
     setModalOpen(true);
   };
@@ -94,7 +95,6 @@ export default function Dashboard() {
           description: data.description || "",
         };
 
-        // Always add new transaction (no editing in dashboard)
         await addTransactionMutation.mutateAsync(txData);
         message = modalType === "income" ? "Income added!" : "Expense added!";
       } else if (modalType === "budget") {
@@ -104,7 +104,7 @@ export default function Dashboard() {
           amount: Number(data.limit || data.amount),
           start_date: data.start_date,
           end_date: data.end_date,
-          description: data.description || "", // optional description
+          description: data.description || "",
         };
         await budgetMutation.mutateAsync(budgetData);
         message = "Budget set!";
@@ -113,9 +113,11 @@ export default function Dashboard() {
           title: data.title,
           target_amount: Number(data.target_amount),
           deadline: data.deadline || null,
+          description: data.description || "",
         };
-        await goalMutation.mutateAsync(goalData);
-        message = "Savings goal added!";
+        await addGoalMutation.mutateAsync(goalData);
+        message = "Savings goal created!";
+        queryClient.invalidateQueries(["goals", "reports"]);
       }
 
       handleCloseModal();
@@ -137,6 +139,12 @@ export default function Dashboard() {
         confirmButtonColor: "#EF4444",
       });
     }
+  };
+
+  // ================= View Goal Handler =================
+  const handleViewGoal = (goal) => {
+    setSelectedGoal(goal);
+    setSavingsModalOpen(true);
   };
 
   // ================= Chart Data =================
@@ -365,23 +373,34 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Modal */}
+      {/* Modal for Income, Expense, Budget, Goal */}
       <ModalForm
         isOpen={modalOpen}
         type={modalType}
         formData={formData}
         setFormData={setFormData}
         onClose={handleCloseModal}
-        refetch={() =>
-          queryClient.invalidateQueries([
-            "transactions",
-            "budgets",
-            "goals",
-            "reports",
-          ])
-        }
         onSubmit={handleSubmit}
       />
+
+      {/* Savings Goal Modal (View Only) */}
+      {savingsModalOpen && (
+        <SavingsCardModal
+          goal={selectedGoal}
+          onClose={() => {
+            setSavingsModalOpen(false);
+            setSelectedGoal(null);
+          }}
+          onAddSavings={(savingsData) => {
+            // Handle adding savings to existing goal
+            console.log("Adding savings:", savingsData);
+            // You would implement the actual API call here
+            return true; // Return success/failure
+          }}
+          transactions={[]} // Pass goal-specific transactions here
+          currentSaved={selectedGoal?.current_amount || 0}
+        />
+      )}
 
       {/* Recent Transactions */}
       <section className="relative">
@@ -426,7 +445,7 @@ export default function Dashboard() {
                       <td className="py-3">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            tx.type === "Income"
+                            tx.type === "income"
                               ? "bg-green-100 text-green-800"
                               : "bg-red-100 text-red-800"
                           }`}
@@ -468,7 +487,11 @@ export default function Dashboard() {
                 </div>
               ) : (
                 goals.map((g, index) => (
-                  <div key={g.goal_id || `goal-${index}`} className="space-y-2">
+                  <div
+                    key={g.goal_id || `goal-${index}`}
+                    className="space-y-2 cursor-pointer hover:bg-purple-50/50 p-3 rounded-lg transition-colors"
+                    onClick={() => handleViewGoal(g)}
+                  >
                     <div className="flex justify-between items-center">
                       <span className="font-medium text-gray-800">
                         {g.title}

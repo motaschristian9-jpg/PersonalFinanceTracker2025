@@ -189,7 +189,7 @@ export default function IncomePage() {
         <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-emerald-100/50 p-4 sm:p-6 lg:p-8">
           <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center space-x-3 sm:space-x-4">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
                 <TrendingUp className="text-white" size={20} />
               </div>
               <div>
@@ -204,7 +204,7 @@ export default function IncomePage() {
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
                 onClick={handleAdd}
-                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base"
+                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base"
               >
                 <Plus size={16} className="sm:w-[18px] sm:h-[18px]" />
                 <span className="font-medium">Add Income</span>
@@ -217,7 +217,7 @@ export default function IncomePage() {
                     avgMonthlyIncome,
                   })
                 }
-                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 border-2 border-emerald-200 text-emerald-700 rounded-xl shadow-lg hover:shadow-xl hover:bg-emerald-50 transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base"
+                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 border-2 border-green-200 text-green-700 rounded-xl shadow-lg hover:shadow-xl hover:bg-emerald-50 transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base"
               >
                 <FileDown size={16} className="sm:w-[18px] sm:h-[18px]" />
                 <span className="font-medium">Export</span>
@@ -233,7 +233,7 @@ export default function IncomePage() {
           <div className="absolute -inset-1 bg-gradient-to-r from-emerald-200/30 to-emerald-300/20 rounded-xl blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
           <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-emerald-100/50 p-4 sm:p-6 hover:shadow-xl transition-shadow">
             <div className="flex items-center space-x-3 sm:space-x-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center">
                 <DollarSign className="text-white" size={18} />
               </div>
               <div>

@@ -74,7 +74,7 @@ export const addBudget = (data) =>
 
 export const addGoal = (data) =>
   api.post("/dashboard/savings-goals", {
-    title: data.goal_name,
+    title: data.title,
     target_amount: Number(data.target_amount),
     deadline: data.deadline || null,
   });

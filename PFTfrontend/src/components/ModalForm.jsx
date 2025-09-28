@@ -1,6 +1,15 @@
-import React, { useState } from "react";
-import { X, Loader2 } from "lucide-react";
-import Swal from "sweetalert2";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import {
+  X,
+  Loader2,
+  DollarSign,
+  Calendar,
+  Target,
+  TrendingUp,
+  TrendingDown,
+  FileText,
+} from "lucide-react";
 
 export default function ModalForm({
   isOpen,
@@ -13,11 +22,35 @@ export default function ModalForm({
   onSubmit,
 }) {
   const [loading, setLoading] = useState(false);
-  const [expenseAmount, setExpenseAmount] = useState(""); // new state for budget expense
+  const [expenseAmount, setExpenseAmount] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("keydown", handleEscape);
+    }
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
-  // Define categories separately
   const expenseCategories = [
     "Food",
     "Transport",
@@ -26,7 +59,6 @@ export default function ModalForm({
     "Shopping",
     "Other",
   ];
-
   const incomeCategories = [
     "Salary",
     "Business",
@@ -35,6 +67,63 @@ export default function ModalForm({
     "Gifts",
     "Other",
   ];
+
+  const getModalConfig = () => {
+    switch (type) {
+      case "income":
+        return {
+          title: editingId ? "Edit Income" : "Add Income",
+          icon: TrendingUp,
+          color: "green",
+          gradient: "from-green-500 to-green-600",
+          borderColor: "border-green-100/50",
+          bgGradient: "from-green-200/30 to-green-300/20",
+        };
+      case "expense":
+        return {
+          title: editingId ? "Edit Expense" : "Add Expense",
+          icon: TrendingDown,
+          color: "red",
+          gradient: "from-red-500 to-red-600",
+          borderColor: "border-red-100/50",
+          bgGradient: "from-red-200/30 to-red-300/20",
+        };
+      case "budget":
+        return {
+          title: selectedBudget
+            ? `Budget: ${selectedBudget.category}`
+            : editingId
+            ? "Edit Budget"
+            : "Add Budget",
+          icon: Target,
+          color: "blue",
+          gradient: "from-blue-500 to-blue-600",
+          borderColor: "border-blue-100/50",
+          bgGradient: "from-blue-200/30 to-blue-300/20",
+        };
+      case "goal":
+        return {
+          title: editingId ? "Edit Goal" : "Add Goal",
+          icon: Target,
+          color: "purple",
+          gradient: "from-purple-500 to-purple-600",
+          borderColor: "border-purple-100/50",
+          bgGradient: "from-purple-200/30 to-purple-300/20",
+        };
+      default:
+        return {
+          title: "Form",
+          icon: FileText,
+          color: "gray",
+          gradient: "from-gray-500 to-gray-600",
+          borderColor: "border-gray-100/50",
+          bgGradient: "from-gray-200/30 to-gray-300/20",
+        };
+    }
+  };
+
+  const config = getModalConfig();
+  const IconComponent = config.icon;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -84,6 +173,20 @@ export default function ModalForm({
             editingId: editingId || null,
           };
         }
+      } else if (type === "goal") {
+        if (
+          !formData.title ||
+          !formData.target_amount ||
+          !formData.deadline
+        ) {
+          throw new Error("All goal fields are required.");
+        }
+        payload = {
+          title: formData.title,
+          target_amount: Number(formData.target_amount),
+          deadline: formData.deadline,
+          editingId: editingId || null,
+        };
       } else {
         throw new Error("Invalid form type");
       }
@@ -100,195 +203,447 @@ export default function ModalForm({
           ? Object.values(err.response.data.errors).flat().join("\n")
           : err.message || "Something went wrong. Please try again.");
 
-      Swal.fire({
-        icon: "error",
-        title: "Oops!",
-        text: errorMessage,
-        confirmButtonColor: "#EF4444",
-      });
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex justify-center items-center">
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
-      <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative z-10">
-        <button
-          className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-          onClick={onClose}
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-[9999] flex justify-center items-center p-4"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+
+      <div
+        className="relative z-10 w-full max-w-md max-h-[90vh] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          className={`absolute -inset-1 bg-gradient-to-r ${config.bgGradient} rounded-2xl blur opacity-40`}
+        ></div>
+
+        <div
+          className={`relative bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border ${config.borderColor} overflow-hidden`}
         >
-          <X />
-        </button>
-
-        <h2 className="text-xl font-bold mb-4 capitalize">
-          {type === "income" && (editingId ? "Edit Income" : "Add Income")}
-          {type === "expense" && (editingId ? "Edit Expense" : "Add Expense")}
-          {type === "budget" &&
-            (selectedBudget
-              ? `Budget: ${selectedBudget.category}`
-              : "Set Budget")}
-        </h2>
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          {/* Income / Expense */}
-          {(type === "income" || type === "expense") && (
-            <>
-              <label className="text-sm text-gray-500">Category</label>
-              <select
-                value={formData.category || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, category: e.target.value })
-                }
-                required
-                className="border px-2 py-1 rounded"
-              >
-                <option value="" disabled>
-                  Select category
-                </option>
-                {(type === "income" ? incomeCategories : expenseCategories).map(
-                  (cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  )
-                )}
-              </select>
-
-              <label className="text-sm text-gray-500">Description</label>
-              <input
-                type="text"
-                placeholder="Description (optional)"
-                value={formData.description || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                className="border px-2 py-1 rounded"
-              />
-
-              <label className="text-sm text-gray-500">Amount</label>
-              <input
-                type="number"
-                placeholder="Amount"
-                value={formData.amount || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, amount: e.target.value })
-                }
-                required
-                className="border px-2 py-1 rounded"
-              />
-
-              <label className="text-sm text-gray-500">Date</label>
-              <input
-                type="date"
-                value={formData.transaction_date || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, transaction_date: e.target.value })
-                }
-                required
-                className="border px-2 py-1 rounded"
-              />
-            </>
-          )}
-
-          {/* Budget */}
-          {type === "budget" && (
-            <>
-              {!selectedBudget && (
-                <>
-                  <label className="text-sm text-gray-500">Category</label>
-                  <select
-                    value={formData.category || ""}
-                    onChange={(e) =>
-                      setFormData({ ...formData, category: e.target.value })
-                    }
-                    required
-                    className="border px-2 py-1 rounded"
-                  >
-                    <option value="" disabled>
-                      Select category
-                    </option>
-                    {expenseCategories.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-
-                  <label className="text-sm text-gray-500">
-                    Description (optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Enter a short description"
-                    value={formData.description || ""}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
-                    className="border px-2 py-1 rounded w-full"
-                  />
-
-                  <label className="text-sm text-gray-500">Amount</label>
-                  <input
-                    type="number"
-                    placeholder="Amount"
-                    value={formData.amount || ""}
-                    onChange={(e) =>
-                      setFormData({ ...formData, amount: e.target.value })
-                    }
-                    required
-                    className="border px-2 py-1 rounded"
-                  />
-
-                  <label className="text-sm text-gray-500">Start Date</label>
-                  <input
-                    type="date"
-                    value={formData.start_date || ""}
-                    onChange={(e) =>
-                      setFormData({ ...formData, start_date: e.target.value })
-                    }
-                    required
-                    className="border px-2 py-1 rounded"
-                  />
-
-                  <label className="text-sm text-gray-500">End Date</label>
-                  <input
-                    type="date"
-                    value={formData.end_date || ""}
-                    onChange={(e) =>
-                      setFormData({ ...formData, end_date: e.target.value })
-                    }
-                    required
-                    className="border px-2 py-1 rounded"
-                  />
-                </>
-              )}
-
-              {selectedBudget && (
-                <>
-                  <label className="text-sm text-gray-500">Add Expense</label>
-                  <input
-                    type="number"
-                    placeholder="Expense Amount"
-                    value={expenseAmount}
-                    onChange={(e) => setExpenseAmount(e.target.value)}
-                    className="border px-2 py-1 rounded"
-                  />
-                </>
-              )}
-            </>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-emerald-600 text-white py-2 rounded hover:bg-emerald-700 flex justify-center items-center"
+          <div
+            className={`p-4 sm:p-6 border-b border-gray-100/50 bg-gradient-to-r ${config.bgGradient}`}
           >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Submit"}
-          </button>
-        </form>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div
+                  className={`w-12 h-12 bg-gradient-to-r ${config.gradient} rounded-xl flex items-center justify-center shadow-lg`}
+                >
+                  <IconComponent className="text-white" size={20} />
+                </div>
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
+                    {config.title}
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {type === "income" && "Record your income transaction"}
+                    {type === "expense" && "Record your expense transaction"}
+                    {type === "budget" &&
+                      !selectedBudget &&
+                      "Set up a new budget"}
+                    {type === "budget" &&
+                      selectedBudget &&
+                      "Add expense to this budget"}
+                    {type === "goal" && "Create a new savings goal"}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={onClose}
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all duration-200"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </div>
+
+          <div className="p-4 sm:p-6 max-h-[70vh] overflow-y-auto">
+            <div className="space-y-4">
+              {(type === "income" || type === "expense") && (
+                <>
+                  {/* Category, Amount, Date, Description fields */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Category <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={formData.category || ""}
+                        onChange={(e) =>
+                          setFormData({ ...formData, category: e.target.value })
+                        }
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                      >
+                        <option value="" disabled>
+                          Select category
+                        </option>
+                        {(type === "income"
+                          ? incomeCategories
+                          : expenseCategories
+                        ).map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Amount <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <DollarSign
+                        size={18}
+                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                      />
+                      <input
+                        type="number"
+                        placeholder="0.00"
+                        value={formData.amount || ""}
+                        onChange={(e) =>
+                          setFormData({ ...formData, amount: e.target.value })
+                        }
+                        min="0"
+                        step="0.01"
+                        className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Date <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Calendar
+                        size={18}
+                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                      />
+                      <input
+                        type="date"
+                        value={formData.transaction_date || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            transaction_date: e.target.value,
+                          })
+                        }
+                        className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Description
+                    </label>
+                    <div className="relative">
+                      <FileText
+                        size={18}
+                        className="absolute left-3 top-3 text-gray-400"
+                      />
+                      <textarea
+                        placeholder="Add a note (optional)"
+                        value={formData.description || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            description: e.target.value,
+                          })
+                        }
+                        rows={3}
+                        className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {type === "budget" && (
+                <>
+                  {/* Budget modal fields (existing code) */}
+                  {!selectedBudget && (
+                    <>
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Category <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={formData.category || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              category: e.target.value,
+                            })
+                          }
+                          className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                        >
+                          <option value="" disabled>
+                            Select category
+                          </option>
+                          {expenseCategories.map((cat) => (
+                            <option key={cat} value={cat}>
+                              {cat}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Budget Amount <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <DollarSign
+                            size={18}
+                            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                          />
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            value={formData.amount || ""}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                amount: e.target.value,
+                              })
+                            }
+                            min="0"
+                            step="0.01"
+                            className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Start Date <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <Calendar
+                              size={18}
+                              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                            />
+                            <input
+                              type="date"
+                              value={formData.start_date || ""}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  start_date: e.target.value,
+                                })
+                              }
+                              className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">
+                            End Date <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <Calendar
+                              size={18}
+                              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                            />
+                            <input
+                              type="date"
+                              value={formData.end_date || ""}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  end_date: e.target.value,
+                                })
+                              }
+                              className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Description
+                        </label>
+                        <div className="relative">
+                          <FileText
+                            size={18}
+                            className="absolute left-3 top-3 text-gray-400"
+                          />
+                          <textarea
+                            placeholder="Enter a short description (optional)"
+                            value={formData.description || ""}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                description: e.target.value,
+                              })
+                            }
+                            rows={3}
+                            className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {selectedBudget && (
+                    <div className="space-y-4">
+                      <div className="relative">
+                        <div className="absolute -inset-1 bg-gradient-to-r from-blue-200/30 to-blue-300/20 rounded-xl blur opacity-30"></div>
+                        <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-blue-100/50 p-4">
+                          <div className="text-center">
+                            <h3 className="font-semibold text-gray-800 mb-2">
+                              {selectedBudget.category} Budget
+                            </h3>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <p className="text-gray-600">Allocated</p>
+                                <p className="font-bold text-blue-600">
+                                  ₱
+                                  {Number(
+                                    selectedBudget.allocated || 0
+                                  ).toLocaleString()}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-gray-600">Remaining</p>
+                                <p className="font-bold text-green-600">
+                                  ₱
+                                  {Number(
+                                    selectedBudget.remaining || 0
+                                  ).toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Expense Amount <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <DollarSign
+                            size={18}
+                            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                          />
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            value={expenseAmount}
+                            onChange={(e) => setExpenseAmount(e.target.value)}
+                            min="0"
+                            step="0.01"
+                            max={selectedBudget.remaining}
+                            className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                          />
+                        </div>
+                        {selectedBudget.remaining && (
+                          <p className="text-xs text-gray-500">
+                            Maximum: ₱
+                            {Number(selectedBudget.remaining).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {type === "goal" && (
+                <>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Goal Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Enter goal name"
+                      value={formData.title || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, title: e.target.value })
+                      }
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Target Amount <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <DollarSign
+                        size={18}
+                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                      />
+                      <input
+                        type="number"
+                        placeholder="0.00"
+                        value={formData.target_amount || ""}
+                        onChange={(e) =>
+                          setFormData({ ...formData, target_amount: e.target.value })
+                        }
+                        min="0"
+                        step="0.01"
+                        className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Deadline <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.deadline || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            deadline: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <button
+                type="submit"
+                onClick={handleSubmit}
+                disabled={loading}
+                className={`w-full py-3 px-4 rounded-lg text-white font-semibold mt-4 bg-gradient-to-r ${config.gradient} hover:opacity-90 transition-all duration-200`}
+              >
+                {loading ? (
+                  <Loader2 className="animate-spin mx-auto" size={20} />
+                ) : editingId ? (
+                  "Update"
+                ) : (
+                  "Submit"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

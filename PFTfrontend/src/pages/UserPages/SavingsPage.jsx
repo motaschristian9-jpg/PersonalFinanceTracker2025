@@ -1,7 +1,7 @@
-// src/pages/UserPages/SavingsPage.jsx
 import { useState, useEffect, useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import { Button } from "../../components/ui/button";
+import ModalForm from "../../components/ModalForm";
 import {
   Card,
   CardHeader,
@@ -9,7 +9,22 @@ import {
   CardContent,
 } from "../../components/ui/card";
 import { Progress } from "../../components/ui/progress";
-import { Plus, Edit, Trash, Download } from "lucide-react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Download,
+  Target,
+  Calendar,
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  Eye,
+  AlertCircle,
+  CheckCircle,
+  Trophy,
+  Clock,
+} from "lucide-react";
 import {
   PieChart,
   Pie,
@@ -23,7 +38,7 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import SavingsCardModal from "../../components/SavingsCardModal"; // ✅ modal
+import SavingsCardModal from "../../components/SavingsCardModal";
 import Swal from "sweetalert2";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAddGoal } from "../../api/queries";
@@ -32,12 +47,15 @@ export default function SavingsPage() {
   const queryClient = useQueryClient();
   const { user, transactions, budgets, goals, reports } = useOutletContext();
   const [selectedGoal, setSelectedGoal] = useState(null);
+  const [modalType, setModalType] = useState("");
+  const [formData, setFormData] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  console.log("isModalOpen:", isModalOpen);
   const [activeGoal, setActiveGoal] = useState(null);
   const [savingsModalOpen, setSavingsModalOpen] = useState(false);
 
-  // ✅ Mutations
+  const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6"];
+
+  // Mutations
   const createGoalMutation = useAddGoal();
 
   const updateGoalMutation = useMutation({
@@ -56,19 +74,72 @@ export default function SavingsPage() {
     },
   });
 
-  // ✅ Add new goal
+  // Helper functions
+  const getStatus = (goal) => {
+    if (Number(goal.current_amount) >= Number(goal.target_amount))
+      return "Completed";
+    const now = new Date();
+    const deadline = goal.deadline ? new Date(goal.deadline) : null;
+    if (deadline && now > deadline) return "Behind";
+    return "On Track";
+  };
+
+  // Summary calculations
+  const totalTarget = goals.reduce(
+    (sum, g) => sum + Number(g.target_amount),
+    0
+  );
+  const totalSaved = goals.reduce(
+    (sum, g) => sum + Number(g.current_amount),
+    0
+  );
+  const totalRemaining = totalTarget - totalSaved;
+  const completedGoalsCount = goals.filter(
+    (g) => getStatus(g) === "Completed"
+  ).length;
+
+  // Chart data
+  const progressData = useMemo(() => {
+    return [
+      { name: "Saved", value: totalSaved },
+      { name: "Remaining", value: Math.max(totalTarget - totalSaved, 0) },
+    ];
+  }, [goals]);
+
+  const barData = useMemo(() => {
+    return goals.map((g) => ({
+      name: g.title,
+      Saved: Number(g.current_amount),
+      Target: Number(g.target_amount),
+    }));
+  }, [goals]);
+
+  // Handlers
   const handleAddGoal = () => {
+    setModalType("goal");
+    setFormData({
+      category: "",
+      customCategory: "",
+      amount: "",
+      description: "",
+      transaction_date: "",
+      title: "",
+      target_amount: "",
+      deadline: "",
+      start_date: "",
+      end_date: "",
+    });
     setSelectedGoal(null);
     setIsModalOpen(true);
   };
 
-  // ✅ Edit goal
+  const handleCloseModal = () => setIsModalOpen(false);
+
   const handleEditGoal = (goal) => {
     setSelectedGoal(goal);
     setIsModalOpen(true);
   };
 
-  // ✅ Delete goal
   const handleDeleteGoal = async (goalId) => {
     const result = await Swal.fire({
       title: "Are you sure?",
@@ -92,10 +163,68 @@ export default function SavingsPage() {
     }
   };
 
-  // ✅ Save goal (create or update) using mutations
+  const handleSubmit = async (data) => {
+    try {
+      let message = "";
+
+      if (modalType === "income" || modalType === "expense") {
+        const txData = {
+          type: modalType === "income" ? "Income" : "Expense",
+          category:
+            data.category === "Other" ? data.customCategory : data.category,
+          amount: parseFloat(data.amount),
+          transaction_date: data.transaction_date,
+          description: data.description || "",
+        };
+
+        await addTransactionMutation.mutateAsync(txData);
+        message = modalType === "income" ? "Income added!" : "Expense added!";
+      } else if (modalType === "budget") {
+        const budgetData = {
+          category:
+            data.category === "Other" ? data.customCategory : data.category,
+          amount: Number(data.limit || data.amount),
+          start_date: data.start_date,
+          end_date: data.end_date,
+          description: data.description || "",
+        };
+        await budgetMutation.mutateAsync(budgetData);
+        message = "Budget set!";
+      } else if (modalType === "goal") {
+        const goalData = {
+          title: data.title,
+          target_amount: Number(data.target_amount),
+          deadline: data.deadline || null,
+          description: data.description || "",
+        };
+        await addGoalMutation.mutateAsync(goalData);
+        message = "Savings goal created!";
+        queryClient.invalidateQueries(["goals", "reports"]);
+      }
+
+      handleCloseModal();
+
+      Swal.fire({
+        icon: "success",
+        title: "Success",
+        text: message,
+        confirmButtonColor: "#10B981",
+      });
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Oops!",
+        text:
+          error.response?.data?.message ||
+          "Something went wrong. Please try again.",
+        confirmButtonColor: "#EF4444",
+      });
+    }
+  };
+
   const handleSaveGoal = (goalData) => {
     if (goalData.goal_id) {
-      // Update existing goal
       updateGoalMutation.mutate(goalData, {
         onSuccess: (response) => {
           Swal.fire({
@@ -117,7 +246,6 @@ export default function SavingsPage() {
         },
       });
     } else {
-      // Create new goal
       createGoalMutation.mutate(goalData, {
         onSuccess: (response) => {
           Swal.fire({
@@ -141,278 +269,567 @@ export default function SavingsPage() {
     }
   };
 
-  // ✅ Chart data
-  const progressData = useMemo(() => {
-    const totalTarget = goals.reduce(
-      (sum, g) => sum + Number(g.target_amount),
-      0
-    );
-    const totalSaved = goals.reduce(
-      (sum, g) => sum + Number(g.current_amount),
-      0
-    );
-    return [
-      { name: "Saved", value: totalSaved },
-      { name: "Remaining", value: totalTarget - totalSaved },
-    ];
-  }, [goals]);
-
-  const barData = useMemo(() => {
-    return goals.map((g) => ({
-      name: g.title,
-      Saved: Number(g.current_amount),
-      Target: Number(g.target_amount),
-    }));
-  }, [goals]);
-
-  const COLORS = ["#10B981", "#F87171"];
-
-  // ✅ Status helper
-  const getStatus = (goal) => {
-    if (Number(goal.current_amount) >= Number(goal.target_amount))
-      return "Completed";
-    const now = new Date();
-    const deadline = goal.deadline ? new Date(goal.deadline) : null;
-    if (deadline && now > deadline) return "Behind";
-    return "On Track";
-  };
-
   return (
-    <div>
-      {/* Top Bar */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            placeholder="Search savings goals..."
-            className="border rounded-md px-3 py-2 w-64"
-          />
-          <select className="border rounded-md px-3 py-2">
-            <option>Sort by Goal Amount</option>
-            <option>Sort by Progress</option>
-            <option>Sort by Deadline</option>
-          </select>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" className="flex items-center gap-2">
-            <Download size={16} /> Export
-          </Button>
-          <div className="w-10 h-10 rounded-full bg-gray-300"></div>
-        </div>
-      </div>
-
-      {/* Page Title & Quick Actions */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">🎯 Savings Goals</h1>
-        <Button className="flex items-center gap-2" onClick={handleAddGoal}>
-          <Plus size={16} /> Add New Goal
-        </Button>
-      </div>
-
-      {/* Active Goals (Cards) */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        {goals.map((goal, i) => {
-          const remaining =
-            Number(goal.target_amount) - Number(goal.current_amount);
-          const progress = Math.min(
-            (Number(goal.current_amount) / Number(goal.target_amount)) * 100,
-            100
-          );
-          const statusColor = remaining > 0 ? "blue" : "red";
-          const status = remaining <= 0 ? "Completed" : "On Track";
-
-          return (
-            <div
-              key={i}
-              className="p-6 rounded-2xl border bg-white shadow-md hover:shadow-lg cursor-pointer transition-all duration-300 flex flex-col md:flex-row justify-between"
-              style={{
-                borderTopWidth: "4px",
-                borderTopColor: statusColor === "blue" ? "#3B82F6" : "#EF4444",
-              }}
-              onClick={() => {
-                console.log("Clicked goal:", goal);
-                setActiveGoal(goal);
-                setSavingsModalOpen(true);
-              }}
-            >
-              <div className="mb-4 md:mb-0 md:w-1/2">
-                <h2 className="font-semibold text-lg mb-3">
-                  {goal.title ?? "Unknown Goal"}
-                </h2>
-
-                <div className="mb-3 space-y-1 text-sm text-gray-700">
-                  <p>
-                    <span className="font-medium">Target:</span> ₱
-                    {Number(goal.target_amount).toLocaleString()}
-                  </p>
-                  <p>
-                    <span className="font-medium">Saved:</span> ₱
-                    {Number(goal.current_amount).toLocaleString()}
-                  </p>
-                  <p>
-                    <span className="font-medium">Remaining:</span> ₱
-                    {remaining.toLocaleString()}
-                  </p>
-                </div>
-
-                <Progress
-                  value={progress}
-                  className="w-full h-3 rounded-full mt-2 mb-2"
-                />
-
-                <span
-                  className={`inline-block mt-2 px-3 py-1 text-sm font-medium rounded-full ${
-                    statusColor === "blue"
-                      ? "bg-blue-100 text-blue-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
-                >
-                  {status}
-                </span>
-
-                <p className="text-sm mt-2">
-                  Deadline:{" "}
-                  {goal.deadline
-                    ? new Date(goal.deadline).toLocaleDateString()
-                    : "N/A"}
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 p-4 sm:p-6 lg:p-0">
+      {/* Page Header */}
+      <section className="relative">
+        <div className="absolute -inset-1 bg-gradient-to-r from-green-200/30 to-green-300/20 rounded-2xl blur opacity-40"></div>
+        <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-green-100/50 p-4 sm:p-6 lg:p-8">
+          <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <Target className="text-white" size={20} />
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+                  Savings Goals
+                </h1>
+                <p className="text-sm sm:text-base text-gray-600 mt-1">
+                  Track and achieve your financial objectives
                 </p>
               </div>
             </div>
-          );
-        })}
-      </div>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+              <button
+                onClick={handleAddGoal}
+                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base w-full sm:w-auto"
+              >
+                <Plus size={16} className="sm:w-[18px] sm:h-[18px]" />
+                <span className="font-medium">Add Goal</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
 
-      {/* Savings Table */}
-      <div className="mb-10">
-        <h2 className="text-xl font-semibold mb-4">Detailed Goals</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full border">
-            <thead className="bg-gray-100 text-left">
-              <tr>
-                <th className="px-4 py-2 border">Goal Name</th>
-                <th className="px-4 py-2 border">Target</th>
-                <th className="px-4 py-2 border">Saved</th>
-                <th className="px-4 py-2 border">Remaining</th>
-                <th className="px-4 py-2 border">Deadline</th>
-                <th className="px-4 py-2 border">Status</th>
-                <th className="px-4 py-2 border">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {goals.map((goal) => {
+      {/* Summary Cards */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+        <div className="relative group">
+          <div className="absolute -inset-1 bg-gradient-to-r from-blue-200/30 to-blue-300/20 rounded-xl blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
+          <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-blue-100/50 p-4 sm:p-6 hover:shadow-xl transition-shadow">
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <Target className="text-white" size={18} />
+              </div>
+              <div>
+                <h3 className="text-gray-600 font-medium text-xs sm:text-sm">
+                  Total Target
+                </h3>
+                <p className="text-lg sm:text-2xl font-bold text-purple-600">
+                  ₱{totalTarget.toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative group">
+          <div className="absolute -inset-1 bg-gradient-to-r from-green-200/30 to-green-300/20 rounded-xl blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
+          <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-green-100/50 p-4 sm:p-6 hover:shadow-xl transition-shadow">
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center">
+                <TrendingUp className="text-white" size={18} />
+              </div>
+              <div>
+                <h3 className="text-gray-600 font-medium text-xs sm:text-sm">
+                  Total Saved
+                </h3>
+                <p className="text-lg sm:text-2xl font-bold text-green-600">
+                  ₱{totalSaved.toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative group">
+          <div className="absolute -inset-1 bg-gradient-to-r from-orange-200/30 to-orange-300/20 rounded-xl blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
+          <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-orange-100/50 p-4 sm:p-6 hover:shadow-xl transition-shadow">
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
+                <Clock className="text-white" size={18} />
+              </div>
+              <div>
+                <h3 className="text-gray-600 font-medium text-xs sm:text-sm">
+                  Remaining
+                </h3>
+                <p
+                  className={`text-lg sm:text-2xl font-bold ${
+                    totalRemaining >= 0 ? "text-orange-600" : "text-red-600"
+                  }`}
+                >
+                  ₱{totalRemaining.toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative group">
+          <div className="absolute -inset-1 bg-gradient-to-r from-purple-200/30 to-purple-300/20 rounded-xl blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
+          <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-purple-100/50 p-4 sm:p-6 hover:shadow-xl transition-shadow">
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <Trophy className="text-white" size={18} />
+              </div>
+              <div>
+                <h3 className="text-gray-600 font-medium text-xs sm:text-sm">
+                  Completed
+                </h3>
+                <p className="text-lg sm:text-2xl font-bold text-purple-600">
+                  {completedGoalsCount}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Goals Cards Grid */}
+      <section className="relative">
+        <div className="absolute -inset-1 bg-gradient-to-r from-green-200/30 to-green-300/20 rounded-2xl blur opacity-40"></div>
+        <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-green-100/50 p-4 sm:p-6">
+          <div className="mb-6">
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-800">
+              Savings Goals Overview
+            </h2>
+            <p className="text-gray-600 text-sm mt-1">
+              {goals.length} goal{goals.length !== 1 ? "s" : ""} created
+            </p>
+          </div>
+
+          {goals.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="flex flex-col items-center space-y-3">
+                <Target className="text-gray-300" size={48} />
+                <span className="text-gray-500 font-medium">
+                  No savings goals created yet
+                </span>
+                <p className="text-gray-400 text-sm">
+                  Create your first savings goal to start tracking your progress
+                </p>
+                <button
+                  onClick={handleAddGoal}
+                  className="mt-4 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:shadow-lg transition-all duration-300"
+                >
+                  Create Goal
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
+              {goals.map((goal, i) => {
                 const remaining =
                   Number(goal.target_amount) - Number(goal.current_amount);
+                const progress = Math.min(
+                  (Number(goal.current_amount) / Number(goal.target_amount)) *
+                    100,
+                  100
+                );
                 const status = getStatus(goal);
+                const isCompleted = status === "Completed";
+                const isBehind = status === "Behind";
+                const statusColor = isCompleted
+                  ? "green"
+                  : isBehind
+                  ? "red"
+                  : "blue";
+
                 return (
-                  <tr key={goal.goal_id} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 border">{goal.title}</td>
-                    <td className="px-4 py-2 border">
-                      ₱{Number(goal.target_amount).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-2 border">
-                      ₱{Number(goal.current_amount).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-2 border">
-                      ₱{remaining.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-2 border">
-                      {goal.deadline || "N/A"}
-                    </td>
-                    <td className="px-4 py-2 border">{status}</td>
-                    <td className="px-4 py-2 border flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEditGoal(goal)}
-                      >
-                        <Edit size={14} />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDeleteGoal(goal.goal_id)}
-                      >
-                        <Trash size={14} />
-                      </Button>
-                    </td>
-                  </tr>
+                  <div
+                    key={i}
+                    className="group relative cursor-pointer"
+                    onClick={() => {
+                      setActiveGoal(goal);
+                      setSavingsModalOpen(true);
+                    }}
+                  >
+                    <div className="absolute -inset-1 bg-gradient-to-r from-gray-200/30 to-gray-300/20 rounded-xl blur opacity-0 group-hover:opacity-50 transition-opacity"></div>
+                    <div className="relative bg-white rounded-xl border border-gray-200 p-4 sm:p-6 hover:shadow-lg transition-all duration-300">
+                      {/* Goal Header */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-lg text-gray-800 truncate">
+                            {goal.title ?? "Unknown Goal"}
+                          </h3>
+                          <p className="text-sm text-gray-500 mt-1 truncate">
+                            {goal.description || "No Description"}
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-1 ml-2">
+                          {isCompleted ? (
+                            <CheckCircle className="text-green-500" size={20} />
+                          ) : isBehind ? (
+                            <AlertCircle className="text-red-500" size={20} />
+                          ) : (
+                            <Clock className="text-blue-500" size={20} />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Deadline */}
+                      <div className="flex items-center space-x-1 mb-4 text-xs text-gray-500">
+                        <Calendar size={12} />
+                        <span>
+                          Deadline:{" "}
+                          {goal.deadline
+                            ? new Date(goal.deadline).toLocaleDateString()
+                            : "No deadline"}
+                        </span>
+                      </div>
+
+                      {/* Goal Details */}
+                      <div className="space-y-2 mb-4">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Target:</span>
+                          <span className="font-semibold text-blue-600">
+                            ₱{Number(goal.target_amount).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Saved:</span>
+                          <span className="font-semibold text-green-600">
+                            ₱{Number(goal.current_amount).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">
+                            Remaining:
+                          </span>
+                          <span
+                            className={`font-semibold ${
+                              remaining <= 0
+                                ? "text-green-600"
+                                : "text-orange-600"
+                            }`}
+                          >
+                            ₱{Math.max(remaining, 0).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="mb-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-xs text-gray-500">
+                            Progress
+                          </span>
+                          <span className="text-xs font-medium text-gray-700">
+                            {progress.toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full transition-all duration-300 ${
+                              statusColor === "green"
+                                ? "bg-green-500"
+                                : statusColor === "red"
+                                ? "bg-red-500"
+                                : "bg-blue-500"
+                            }`}
+                            style={{ width: `${Math.min(progress, 100)}%` }}
+                          ></div>
+                        </div>
+                      </div>
+
+                      {/* Status Badge */}
+                      <div className="flex items-center justify-between">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            statusColor === "green"
+                              ? "bg-green-100 text-green-800"
+                              : statusColor === "red"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-blue-100 text-blue-800"
+                          }`}
+                        >
+                          {status}
+                        </span>
+                        <Eye
+                          className="text-gray-400 group-hover:text-green-500 transition-colors"
+                          size={16}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
+            </div>
+          )}
         </div>
-      </div>
+      </section>
 
-      {/* Insights Section with Recharts */}
-      <div className="mb-10">
-        <h2 className="text-xl font-semibold mb-4">Savings Insights</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Pie Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Progress Overview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={progressData}
-                    dataKey="value"
-                    nameKey="name"
-                    outerRadius={90}
-                    label
+      {/* Goals Table - Desktop Only */}
+      <section className="relative hidden lg:block">
+        <div className="absolute -inset-1 bg-gradient-to-r from-green-200/30 to-green-300/20 rounded-2xl blur opacity-40"></div>
+        <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-green-100/50 overflow-hidden">
+          <div className="p-6 border-b border-green-100/50">
+            <h3 className="text-xl font-semibold text-gray-800">
+              Goal Details
+            </h3>
+            <p className="text-gray-600 text-sm mt-1">
+              Detailed view of all savings goals
+            </p>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-green-50/50">
+                <tr>
+                  <th className="py-4 px-6 font-semibold text-gray-700">
+                    Goal Name
+                  </th>
+                  <th className="py-4 px-6 font-semibold text-gray-700">
+                    Target
+                  </th>
+                  <th className="py-4 px-6 font-semibold text-gray-700">
+                    Saved
+                  </th>
+                  <th className="py-4 px-6 font-semibold text-gray-700">
+                    Remaining
+                  </th>
+                  <th className="py-4 px-6 font-semibold text-gray-700">
+                    Deadline
+                  </th>
+                  <th className="py-4 px-6 font-semibold text-gray-700">
+                    Status
+                  </th>
+                  <th className="py-4 px-6 font-semibold text-gray-700 text-right">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {goals.map((goal) => {
+                  const remaining =
+                    Number(goal.target_amount) - Number(goal.current_amount);
+                  const status = getStatus(goal);
+                  const isCompleted = status === "Completed";
+                  const isBehind = status === "Behind";
+
+                  return (
+                    <tr
+                      key={goal.goal_id}
+                      className="border-b border-gray-100/50 hover:bg-green-50/30 transition-colors"
+                    >
+                      <td className="py-4 px-6">
+                        <div>
+                          <p className="font-medium text-gray-800">
+                            {goal.title}
+                          </p>
+                          <p className="text-sm text-gray-500 truncate max-w-xs">
+                            {goal.description || "No description"}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6 font-semibold text-blue-600">
+                        ₱{Number(goal.target_amount).toLocaleString()}
+                      </td>
+                      <td className="py-4 px-6 font-semibold text-green-600">
+                        ₱{Number(goal.current_amount).toLocaleString()}
+                      </td>
+                      <td
+                        className={`py-4 px-6 font-semibold ${
+                          remaining <= 0 ? "text-green-600" : "text-orange-600"
+                        }`}
+                      >
+                        ₱{Math.max(remaining, 0).toLocaleString()}
+                      </td>
+                      <td className="py-4 px-6 text-gray-600">
+                        {goal.deadline
+                          ? new Date(goal.deadline).toLocaleDateString()
+                          : "No deadline"}
+                      </td>
+                      <td className="py-4 px-6">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            isCompleted
+                              ? "bg-green-100 text-green-800"
+                              : isBehind
+                              ? "bg-red-100 text-red-800"
+                              : "bg-blue-100 text-blue-800"
+                          }`}
+                        >
+                          {status}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6 text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button
+                            className="p-2 text-green-500 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditGoal(goal);
+                            }}
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button
+                            className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteGoal(goal.goal_id);
+                            }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* Charts */}
+      {goals.length > 0 && (
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+          {/* Progress Overview PieChart */}
+          <div className="relative">
+            <div className="absolute -inset-1 bg-gradient-to-r from-purple-200/30 to-purple-300/20 rounded-xl blur opacity-40"></div>
+            <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-purple-100/50 p-4 sm:p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                Progress Overview
+              </h3>
+              <div className="w-full h-64 sm:h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={progressData}
+                      dataKey="value"
+                      nameKey="name"
+                      outerRadius="80%"
+                      fill="#8884d8"
+                      label={({ name, percent }) =>
+                        `${name} ${(percent * 100).toFixed(0)}%`
+                      }
+                    >
+                      {progressData.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value) => [`₱${value.toLocaleString()}`, ""]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          {/* Savings per Goal BarChart */}
+          <div className="relative">
+            <div className="absolute -inset-1 bg-gradient-to-r from-blue-200/30 to-blue-300/20 rounded-xl blur opacity-40"></div>
+            <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-blue-100/50 p-4 sm:p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                Savings per Goal
+              </h3>
+              <div className="w-full h-64 sm:h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={barData}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                   >
-                    {progressData.map((_, index) => (
-                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* Bar Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Savings per Goal</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={barData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="Target" fill="#93C5FD" />
-                  <Bar dataKey="Saved" fill="#10B981" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fontSize: 12 }}
+                      interval={0}
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
+                    />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        `₱${value.toLocaleString()}`,
+                        name,
+                      ]}
+                    />
+                    <Legend />
+                    <Bar
+                      dataKey="Target"
+                      fill="#93C5FD"
+                      name="Target"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="Saved"
+                      fill="#10B981"
+                      name="Saved"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Tips Section */}
-      <div className="mb-10">
-        <h2 className="text-xl font-semibold mb-4">💡 Savings Tips</h2>
-        <ul className="list-disc pl-6 text-gray-700">
-          <li>Add ₱500 weekly to reach your Vacation goal by December.</li>
-          <li>
-            You’ve completed{" "}
-            {goals.filter((g) => getStatus(g) === "Completed").length} goals so
-            far!
-          </li>
-        </ul>
-      </div>
+      <section className="relative">
+        <div className="absolute -inset-1 bg-gradient-to-r from-yellow-200/30 to-yellow-300/20 rounded-xl blur opacity-40"></div>
+        <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-yellow-100/50 p-4 sm:p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center space-x-2">
+            <span>💡</span>
+            <span>Savings Tips</span>
+          </h3>
+          <ul className="space-y-2 text-gray-700">
+            <li className="flex items-start space-x-2">
+              <span className="text-green-500 mt-1">•</span>
+              <span>
+                Add ₱500 weekly to reach your Vacation goal by December.
+              </span>
+            </li>
+            <li className="flex items-start space-x-2">
+              <span className="text-green-500 mt-1">•</span>
+              <span>
+                You've completed {completedGoalsCount} goals so far! Keep up the
+                great work.
+              </span>
+            </li>
+            <li className="flex items-start space-x-2">
+              <span className="text-green-500 mt-1">•</span>
+              <span>
+                Set up automatic transfers to make saving effortless and
+                consistent.
+              </span>
+            </li>
+            <li className="flex items-start space-x-2">
+              <span className="text-green-500 mt-1">•</span>
+              <span>
+                Break large goals into smaller milestones to stay motivated.
+              </span>
+            </li>
+          </ul>
+        </div>
+      </section>
 
-      {/* Modal */}
-      {isModalOpen && (
+      {/* Modals */}
+
+      <ModalForm
+        isOpen={isModalOpen}
+        type={modalType}
+        formData={formData}
+        setFormData={setFormData}
+        onClose={handleCloseModal}
+        onSubmit={handleSubmit}
+      />
+
+      {savingsModalOpen && (
         <SavingsCardModal
-          goal={selectedGoal}
-          onClose={() => setIsModalOpen(false)}
+          goal={activeGoal}
+          onClose={() => {
+            setSavingsModalOpen(false);
+            setActiveGoal(null);
+          }}
           onSave={handleSaveGoal}
         />
       )}

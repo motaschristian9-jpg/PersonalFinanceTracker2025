@@ -15,7 +15,6 @@ import {
   User,
   Menu,
   ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 
 import {
@@ -34,7 +33,9 @@ export default function UserLayout() {
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const notificationRef = useRef(null);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -77,6 +78,12 @@ export default function UserLayout() {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setDropdownOpen(false);
       }
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target)
+      ) {
+        setNotificationOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -102,6 +109,61 @@ export default function UserLayout() {
     goalsLoading ||
     reportsLoading;
 
+  // --- Generate notifications ---
+  const generateNotifications = () => {
+    const notifications = [];
+
+    if (budgets && budgets.length > 0) {
+      budgets.forEach((b) => {
+        const percentSpent = (b.spent / b.limit) * 100;
+        if (percentSpent >= 100)
+          notifications.push({
+            id: `budget-${b.id}-over`,
+            message: `⚠️ You have overspent your ${b.category} budget!`,
+            type: "error",
+          });
+        else if (percentSpent >= 80)
+          notifications.push({
+            id: `budget-${b.id}-warn`,
+            message: `⚠️ You have used ${Math.floor(percentSpent)}% of your ${
+              b.category
+            } budget.`,
+            type: "warning",
+          });
+      });
+    }
+
+    if (goals && goals.length > 0) {
+      goals.forEach((g) => {
+        const progress = (g.current_amount / g.target_amount) * 100;
+        if (progress >= 100)
+          notifications.push({
+            id: `goal-${g.goal_id}-complete`,
+            message: `🎉 You've reached your savings goal: ${g.title}!`,
+            type: "success",
+          });
+        else if (progress >= 80)
+          notifications.push({
+            id: `goal-${g.goal_id}-high`,
+            message: `🎯 You're ${Math.floor(progress)}% of the way to ${
+              g.title
+            }. Almost there!`,
+            type: "info",
+          });
+        else if (progress >= 50)
+          notifications.push({
+            id: `goal-${g.goal_id}-mid`,
+            message: `🎯 You've reached 50% of ${g.title}. Keep going!`,
+            type: "info",
+          });
+      });
+    }
+
+    return notifications;
+  };
+
+  const notifications = generateNotifications();
+
   // --- Menu items ---
   const menuItems = [
     {
@@ -124,10 +186,15 @@ export default function UserLayout() {
         <div className="relative">
           <div className="absolute -inset-3 bg-gradient-to-r from-green-200/50 to-green-300/30 rounded-2xl blur opacity-60"></div>
           <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-green-100 text-center">
-            <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <span className="text-2xl">💰</span>
+            <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <span className="text-white text-3xl font-bold">M</span>
             </div>
-            <p className="text-gray-700 font-medium">Loading MoneyTracker...</p>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">
+              MoneyTracker
+            </h2>
+            <p className="text-gray-600 font-medium">
+              Building your path to financial freedom...
+            </p>
           </div>
         </div>
       </div>
@@ -153,32 +220,41 @@ export default function UserLayout() {
       {/* Sidebar */}
       <aside
         className={`${
-          sidebarOpen ? "w-64" : "w-16"
-        } hidden md:block relative z-10 sticky top-0 h-screen transition-all duration-300 ease-in-out`}
+          sidebarOpen ? "w-64" : "w-24"
+        } hidden md:block sticky top-0 z-10 h-screen transition-all duration-200 ease-in-out`}
       >
         <div className="h-full bg-white/90 backdrop-blur-sm border-r border-green-100/50 shadow-xl">
           <div className="p-4">
             {/* Logo */}
             <div className="flex items-center justify-between mb-8">
               {sidebarOpen ? (
-                <span className="text-xl font-bold bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
-                  MoneyTracker
-                </span>
+                <>
+                  <div className="w-10 h-10 bg-gradient-to-r from-green-600 to-green-700 rounded-xl flex items-center justify-center shadow-lg">
+                    <span className="text-white font-bold text-lg">M</span>
+                  </div>
+                  <span className="text-xl font-bold bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
+                    MoneyTracker
+                  </span>
+                  <button
+                    onClick={toggleSidebar}
+                    className="p-2 rounded-lg hover:bg-green-50 transition-colors duration-200 text-gray-600 hover:text-green-600"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                </>
               ) : (
-                <div className="w-10 h-10 bg-gradient-to-r from-green-600 to-green-700 rounded-xl flex items-center justify-center shadow-lg">
-                  <span className="text-white font-bold text-lg">MT</span>
+                <div className="flex items-center space-x-2">
+                  <div className="w-10 h-10 bg-gradient-to-r from-green-600 to-green-700 rounded-xl flex items-center justify-center shadow-lg">
+                    <span className="text-white font-bold text-lg">M</span>
+                  </div>
+                  <button
+                    onClick={toggleSidebar}
+                    className="p-2 rounded-lg hover:bg-green-50 transition-colors duration-200 text-gray-600 hover:text-green-600"
+                  >
+                    <ChevronLeft size={18} className="rotate-180" />
+                  </button>
                 </div>
               )}
-              <button
-                onClick={toggleSidebar}
-                className="p-2 rounded-lg hover:bg-green-50 transition-colors duration-200 text-gray-600 hover:text-green-600"
-              >
-                {sidebarOpen ? (
-                  <ChevronLeft size={18} />
-                ) : (
-                  <ChevronRight size={18} />
-                )}
-              </button>
             </div>
 
             {/* Navigation */}
@@ -291,8 +367,8 @@ export default function UserLayout() {
       {/* Main content */}
       <div className="flex-1 flex flex-col relative z-10">
         {/* Header */}
-        <header className="bg-white/90 backdrop-blur-sm border-b border-green-100/50 shadow-sm">
-          <div className="flex items-center justify-between px-6 py-4">
+        <header className="sticky top-0 z-20 bg-white/90 backdrop-blur-sm border-b border-green-100/50 shadow-sm">
+          <div className="flex items-center justify-between px-6 py-1">
             <div className="flex items-center space-x-4">
               {/* Mobile menu button */}
               <button
@@ -308,13 +384,59 @@ export default function UserLayout() {
             </div>
 
             <div className="flex items-center space-x-6">
-              {/* Notifications */}
-              <div className="relative">
-                <button className="p-2 rounded-lg hover:bg-green-50 transition-colors duration-200 text-gray-600 hover:text-green-600">
+              {/* Notifications Dropdown */}
+              <div className="relative" ref={notificationRef}>
+                <button
+                  onClick={() => setNotificationOpen(!notificationOpen)}
+                  className="p-2 rounded-lg hover:bg-green-50 transition-colors duration-200 text-gray-600 hover:text-green-600 relative"
+                >
                   <Bell size={20} />
+                  {/* Notification badge */}
+                  {notifications.length > 0 && (
+                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+                  )}
                 </button>
-                {/* Notification badge */}
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+
+                {notificationOpen && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white/95 backdrop-blur-sm border border-green-100 rounded-xl shadow-xl py-2 z-50 max-h-96 overflow-y-auto">
+                    <div className="px-4 py-2 border-b border-green-100">
+                      <h3 className="font-semibold text-gray-800">
+                        Notifications
+                      </h3>
+                    </div>
+                    <div className="p-2">
+                      {notifications.length === 0 ? (
+                        <div className="text-center text-gray-500 py-8">
+                          <div className="flex flex-col items-center space-y-2">
+                            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                              <span className="text-2xl">🔔</span>
+                            </div>
+                            <span className="text-sm">No notifications</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {notifications.map((n) => (
+                            <div
+                              key={n.id}
+                              className={`p-3 rounded-lg border-l-4 text-sm ${
+                                n.type === "error"
+                                  ? "bg-red-50 border-red-500 text-red-800"
+                                  : n.type === "warning"
+                                  ? "bg-yellow-50 border-yellow-500 text-yellow-800"
+                                  : n.type === "success"
+                                  ? "bg-green-50 border-green-500 text-green-800"
+                                  : "bg-blue-50 border-blue-500 text-blue-800"
+                              }`}
+                            >
+                              {n.message}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Profile Dropdown */}
@@ -346,7 +468,7 @@ export default function UserLayout() {
                       className="flex items-center space-x-3 px-4 py-3 hover:bg-red-50 transition-colors duration-200 text-red-600 hover:text-red-700 w-full text-left"
                     >
                       <LogOut size={16} />
-                      <span className="font-medium">Sign Out</span>
+                      <span className="font-medium">Log Out</span>
                     </button>
                   </div>
                 )}
@@ -356,7 +478,7 @@ export default function UserLayout() {
         </header>
 
         {/* Outlet for child pages */}
-        <main className="flex-1 p-6 space-y-6 overflow-auto">
+        <main className="flex-1 p-6 space-y-6 overflow-auto relative z-10">
           <Outlet context={{ user, transactions, budgets, goals, reports }} />
         </main>
 

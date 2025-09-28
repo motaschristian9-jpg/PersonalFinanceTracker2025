@@ -1,139 +1,119 @@
-// src/pages/UserPages/SettingsPage.jsx
-import React from "react";
-import DashboardLayout from "../../layouts/UserLayout";
-import { Card } from "../../components/ui/card";
+import React, { useState } from "react";
 import { Button } from "../../components/ui/button";
+import { Settings, Moon, Sun, Globe, Bell, LogOut } from "lucide-react";
 
 const SettingsPage = () => {
+  const [currency, setCurrency] = useState("₱");
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
   return (
-    <div>
-      {/* Top Bar */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">⚙️ Settings</h1>
-        <div className="flex items-center space-x-3">
-          {/* Notifications */}
-          <button className="p-2 rounded-full hover:bg-gray-100">🔔</button>
-          {/* Profile Menu */}
-          <img
-            src="https://via.placeholder.com/40"
-            alt="profile"
-            className="w-10 h-10 rounded-full cursor-pointer"
-          />
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 p-4 sm:p-6 lg:p-0">
+      {/* Page Header */}
+      <section className="relative">
+        <div className="absolute -inset-1 bg-gradient-to-r from-purple-200/30 to-purple-300/20 rounded-2xl blur opacity-40"></div>
+        <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-purple-100/50 p-4 sm:p-6 lg:p-8">
+          <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <Settings className="text-white" size={20} />
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+                  Settings
+                </h1>
+                <p className="text-sm sm:text-base text-gray-600 mt-1">
+                  Customize your app preferences and settings
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* Settings Sections */}
-      <div className="space-y-6">
-        {/* Account Settings */}
-        <Card>
-          <h2 className="text-lg font-semibold mb-4">👤 Account Settings</h2>
-          <form className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input className="border rounded-lg p-2" placeholder="Name" />
-              <input className="border rounded-lg p-2" placeholder="Email" />
-              <input className="border rounded-lg p-2" placeholder="Username" />
-              <input
-                type="password"
-                className="border rounded-lg p-2"
-                placeholder="Password"
-              />
+      {/* Preferences */}
+      <section className="relative">
+        <div className="absolute -inset-1 bg-gradient-to-r from-indigo-200/30 to-indigo-300/20 rounded-xl blur opacity-40"></div>
+        <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-indigo-100/50 p-4 sm:p-6">
+          <h2 className="text-lg font-semibold text-gray-800 mb-6 flex items-center space-x-2">
+            <Moon size={18} />
+            <span>Preferences</span>
+          </h2>
+
+          <div className="space-y-6">
+            {/* Currency Setting */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 p-4 bg-gradient-to-r from-green-50 to-green-100/50 rounded-lg border border-green-200/50">
+              <div className="flex items-center space-x-3">
+                <Globe className="text-green-500" size={20} />
+                <div>
+                  <h3 className="font-medium text-gray-800">Currency</h3>
+                  <p className="text-sm text-gray-600">
+                    Select your preferred currency
+                  </p>
+                </div>
+              </div>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white"
+              >
+                <option value="₱">Philippine Peso (₱)</option>
+                <option value="$">US Dollar ($)</option>
+                <option value="€">Euro (€)</option>
+                <option value="£">British Pound (£)</option>
+              </select>
             </div>
+
+            {/* Notifications Setting */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 p-4 bg-gradient-to-r from-purple-50 to-purple-100/50 rounded-lg border border-purple-200/50">
+              <div className="flex items-center space-x-3">
+                <Bell className="text-purple-500" size={20} />
+                <div>
+                  <h3 className="font-medium text-gray-800">Notifications</h3>
+                  <p className="text-sm text-gray-600">
+                    Enable or disable notifications
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setNotificationsEnabled(!notificationsEnabled)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  notificationsEnabled ? "bg-purple-600" : "bg-gray-300"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    notificationsEnabled ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Logout Section */}
+      <section className="relative">
+        <div className="absolute -inset-1 bg-gradient-to-r from-red-200/30 to-red-300/20 rounded-xl blur opacity-40"></div>
+        <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-red-100/50 p-4 sm:p-6">
+          <h2 className="text-lg font-semibold text-gray-800 mb-6 flex items-center space-x-2">
+            <LogOut size={18} />
+            <span>Log Out</span>
+          </h2>
+
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
             <div>
-              <label className="block mb-2 font-medium">Profile Picture</label>
-              <input type="file" className="border rounded-lg p-2 w-full" />
+              <p className="text-gray-600">
+                Ready to log out? You'll need to sign back in to access your
+                account.
+              </p>
             </div>
-            <Button>Save Changes</Button>
-          </form>
-        </Card>
-
-        {/* Preferences */}
-        <Card>
-          <h2 className="text-lg font-semibold mb-4">🌙 Preferences</h2>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span>Theme</span>
-              <select className="border rounded-lg p-2">
-                <option>Light</option>
-                <option>Dark</option>
-              </select>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Currency</span>
-              <select className="border rounded-lg p-2">
-                <option>₱</option>
-                <option>$</option>
-                <option>€</option>
-              </select>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Date Format</span>
-              <select className="border rounded-lg p-2">
-                <option>MM/DD/YYYY</option>
-                <option>DD/MM/YYYY</option>
-              </select>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Notifications</span>
-              <select className="border rounded-lg p-2">
-                <option>Email</option>
-                <option>App Alerts</option>
-                <option>Both</option>
-              </select>
-            </div>
-          </div>
-        </Card>
-
-        {/* Finance Settings */}
-        <Card>
-          <h2 className="text-lg font-semibold mb-4">💱 Finance Settings</h2>
-          <div className="space-y-3">
-            <Button variant="outline">Manage Categories</Button>
-            <Button variant="outline">Default Budget Rules</Button>
-            <Button variant="outline">Savings Goal Templates</Button>
-          </div>
-        </Card>
-
-        {/* Data Management */}
-        <Card>
-          <h2 className="text-lg font-semibold mb-4">📂 Data Management</h2>
-          <div className="flex flex-wrap gap-3">
-            <Button variant="outline">📥 Import Data</Button>
-            <Button variant="outline">📤 Export Data</Button>
-            <Button variant="outline" className="text-red-600">
-              🗑️ Clear Data
+            <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:shadow-lg transition-all duration-300 w-full sm:w-auto">
+              <LogOut className="mr-2" size={16} />
+              Log Out
             </Button>
           </div>
-        </Card>
-
-        {/* Security & Privacy */}
-        <Card>
-          <h2 className="text-lg font-semibold mb-4">🔒 Security & Privacy</h2>
-          <div className="space-y-3">
-            <Button variant="outline">Change Password</Button>
-            <Button variant="outline">Enable 2FA</Button>
-            <div className="text-sm text-blue-600 space-x-4">
-              <a href="#">Privacy Policy</a>
-              <a href="#">Terms of Service</a>
-            </div>
-          </div>
-        </Card>
-
-        {/* Support & Help */}
-        <Card>
-          <h2 className="text-lg font-semibold mb-4">❓ Support & Help</h2>
-          <div className="space-y-3">
-            <Button variant="outline">FAQ</Button>
-            <Button variant="outline">Contact Support</Button>
-            <Button variant="outline">User Guide</Button>
-          </div>
-        </Card>
-
-        {/* Logout */}
-        <Card>
-          <h2 className="text-lg font-semibold mb-4">🚪 Logout</h2>
-          <Button className="bg-red-600 hover:bg-red-700">Logout</Button>
-        </Card>
-      </div>
+        </div>
+      </section>
     </div>
   );
 };

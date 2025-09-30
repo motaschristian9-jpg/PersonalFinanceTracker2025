@@ -107,6 +107,7 @@ export const updateGoal = (id, data) =>
     title: data.title,
     target_amount: Number(data.target_amount),
     deadline: data.deadline || null,
+    description: data.description || null,
   });
 
 // --- Deleting Data ---

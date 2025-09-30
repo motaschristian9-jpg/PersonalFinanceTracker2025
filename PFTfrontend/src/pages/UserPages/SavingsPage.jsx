@@ -41,7 +41,7 @@ import {
 import SavingsCardModal from "../../components/SavingsCardModal";
 import Swal from "sweetalert2";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAddGoal } from "../../api/queries";
+import { useAddGoal, useUpdateGoal } from "../../api/queries";
 
 export default function SavingsPage() {
   const queryClient = useQueryClient();
@@ -59,21 +59,7 @@ export default function SavingsPage() {
   // Mutations
   const addGoalMutation = useAddGoal();
 
-  const updateGoalMutation = useMutation({
-    mutationFn: (goalData) =>
-      api.put(`/dashboard/savings/${goalData.goal_id}`, goalData),
-    onSuccess: (res, goalData) => {
-      queryClient.invalidateQueries(["savings"]);
-      setGoals((prev) =>
-        prev.map((g) => (g.goal_id === goalData.goal_id ? res.data : g))
-      );
-      Swal.fire("Updated!", "Your savings goal has been updated.", "success");
-      setModalOpen(false);
-    },
-    onError: () => {
-      Swal.fire("Error", "Failed to update the goal.", "error");
-    },
-  });
+  const updateGoalMutation = useUpdateGoal();
 
   // Helper functions
   const getStatus = (goal) => {
@@ -116,6 +102,75 @@ export default function SavingsPage() {
   }, [goals]);
 
   // Handlers
+  const handleEditGoal = async (updatedGoal) => {
+    try {
+      // ✅ Validation
+      if (!updatedGoal.title || updatedGoal.title.trim() === "") {
+        await Swal.fire({
+          icon: "warning",
+          title: "Missing Title",
+          text: "Please enter a goal title.",
+          confirmButtonColor: "#F59E0B",
+        });
+        return; // ⛔ Stop here, don't reset modal or editing state
+      }
+
+      if (
+        updatedGoal.target_amount === undefined ||
+        updatedGoal.target_amount === null ||
+        isNaN(updatedGoal.target_amount) ||
+        updatedGoal.target_amount < 0
+      ) {
+        await Swal.fire({
+          icon: "warning",
+          title: "Invalid Target Amount",
+          text: "Please enter a valid non-negative number.",
+          confirmButtonColor: "#F59E0B",
+        });
+        return;
+      }
+
+      if (updatedGoal.deadline && isNaN(Date.parse(updatedGoal.deadline))) {
+        await Swal.fire({
+          icon: "warning",
+          title: "Invalid Deadline",
+          text: "Please provide a valid date.",
+          confirmButtonColor: "#F59E0B",
+        });
+        return;
+      }
+
+      // ✅ If all validations pass → Update API
+      await updateGoalMutation.mutateAsync({
+        id: updatedGoal.goal_id,
+        data: {
+          title: updatedGoal.title,
+          target_amount: updatedGoal.target_amount,
+          deadline: updatedGoal.deadline,
+          description: updatedGoal.description || "",
+        },
+      });
+
+      // ✅ Only close modal when successful
+      setModalOpen(false);
+      setActiveGoal(null);
+
+      Swal.fire({
+        icon: "success",
+        title: "Goal updated!",
+        confirmButtonColor: "#10B981",
+      });
+    } catch (error) {
+      console.error("Update Goal Error:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Oops!",
+        text: error.response?.data?.message || "Something went wrong.",
+        confirmButtonColor: "#EF4444",
+      });
+    }
+  };
+
   const handleOpenModal = (goal = null) => {
     if (!goal && goals.length >= MAX_GOALS) {
       Swal.fire({
@@ -144,11 +199,6 @@ export default function SavingsPage() {
   };
 
   const handleCloseModal = () => setModalOpen(false);
-
-  const handleEditGoal = (goal) => {
-    setSelectedGoal(goal);
-    setModalOpen(true);
-  };
 
   const handleDeleteGoal = async (goalId) => {
     const result = await Swal.fire({
@@ -450,8 +500,11 @@ export default function SavingsPage() {
                     key={i}
                     className="group relative cursor-pointer"
                     onClick={() => {
-                      setActiveGoal(goal);
-                      setSavingsModalOpen(true);
+                      setActiveGoal(null);
+                      setTimeout(() => {
+                        setActiveGoal({ ...goal });
+                        setSavingsModalOpen(true);
+                      }, 50);
                     }}
                   >
                     <div className="absolute -inset-1 bg-gradient-to-r from-gray-200/30 to-gray-300/20 rounded-xl blur opacity-0 group-hover:opacity-50 transition-opacity"></div>
@@ -840,6 +893,7 @@ export default function SavingsPage() {
             setSavingsModalOpen(false);
             setActiveGoal(null);
           }}
+          onEditGoal={handleEditGoal}
           onSave={handleSaveGoal}
         />
       )}

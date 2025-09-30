@@ -8,16 +8,28 @@ import {
   TrendingUp,
   PiggyBank,
   Target,
+  Edit,
+  Trash2,
 } from "lucide-react";
 
 export default function SavingsCardModal({
   goal,
   onClose,
+  onEditGoal,
   onAddSavings,
   transactions = [],
   currentSaved = 0,
 }) {
+  const [localGoal, setLocalGoal] = useState(goal);
+  const [targetInput, setTargetInput] = useState(
+    localGoal.target_amount?.toString() || ""
+  );
+  const [goalName, setGoalNameInput] = useState(localGoal.title || "");
+  const [descriptionInput, setDescriptionInput] = useState(
+    localGoal.description || ""
+  );
   const [savingsAmount, setSavingsAmount] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     // Handle body scroll lock when modal is open
@@ -44,6 +56,17 @@ export default function SavingsCardModal({
   }, [onClose]);
 
   if (!goal) return null;
+
+  const handleSaveChanges = async () => {
+    await onEditGoal({
+      ...localGoal,
+      title: goalName,
+      target_amount: Number(targetInput) || 0,
+      deadline: localGoal.deadline,
+      description: descriptionInput || "",
+    });
+    setIsEditing(false);
+  };
 
   const handleAddSavings = async () => {
     if (!savingsAmount || Number(savingsAmount) <= 0) {
@@ -116,12 +139,29 @@ export default function SavingsCardModal({
                 </div>
               </div>
 
-              <button
-                onClick={onClose}
-                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all duration-200"
-              >
-                <X size={20} />
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setIsEditing(!isEditing)}
+                  className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all duration-200 text-sm font-medium"
+                >
+                  <Edit size={16} />
+                  <span className="hidden sm:inline">
+                    {isEditing ? "Cancel" : "Edit"}
+                  </span>
+                </button>
+                <button
+                  className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                  onClick={() => onDeleteBudget(budget)}
+                >
+                  <Trash2 size={16} />
+                </button>
+                <button
+                  onClick={onClose}
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -136,7 +176,7 @@ export default function SavingsCardModal({
                   <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-blue-100/50 p-4 sm:p-6">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center space-x-2">
                       <TrendingUp size={18} />
-                      <span>Progress Overview</span>
+                      <span>Savings Overview</span>
                     </h3>
 
                     <div className="space-y-4">
@@ -214,63 +254,141 @@ export default function SavingsCardModal({
               </div>
 
               {/* Add Savings Section */}
-              <div className="relative mb-6">
-                <div className="absolute -inset-1 bg-gradient-to-r from-purple-200/30 to-purple-300/20 rounded-xl blur opacity-30"></div>
-                <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-purple-100/50 p-4 sm:p-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center space-x-2">
-                    <Plus size={18} />
-                    <span>Add Savings</span>
-                  </h3>
+              {isEditing ? (
+                <div className="relative mb-6">
+                  <div className="absolute -inset-1 bg-gradient-to-r from-orange-200/30 to-orange-300/20 rounded-xl blur opacity-30"></div>
+                  <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-orange-100/50 p-4 sm:p-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                      Edit Goal
+                    </h3>
 
-                  <div className="space-y-3">
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <div className="flex-1 relative">
-                        <DollarSign
-                          size={18}
-                          className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                    <div className="space-y-4">
+                      {/* Goal Name */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Goal Name
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter Goal Name"
+                          value={goalName}
+                          onChange={(e) => setGoalNameInput(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                         />
+                      </div>
+
+                      {/* Target Amount */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Target Amount
+                        </label>
                         <input
                           type="number"
-                          placeholder="Enter savings amount"
-                          value={savingsAmount}
-                          onChange={(e) => setSavingsAmount(e.target.value)}
-                          className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
-                          min="0"
-                          step="0.01"
-                          max={remainingAmount}
+                          value={targetInput}
+                          onChange={(e) => setTargetInput(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                          placeholder="Enter Target Amount"
                         />
                       </div>
+
+                      {/* Description */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Description
+                        </label>
+                        <input
+                          type="text"
+                          value={descriptionInput}
+                          onChange={(e) => setDescriptionInput(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                          placeholder="Enter description"
+                        />
+                      </div>
+
+                      {/* Deadline */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Deadline
+                        </label>
+                        <input
+                          type="date"
+                          value={localGoal.deadline}
+                          onChange={(e) => setLocalGoal(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                        />
+                      </div>
+
+                      {/* Save Button */}
                       <button
-                        onClick={handleAddSavings}
-                        disabled={!savingsAmount || Number(savingsAmount) <= 0}
-                        className="px-4 sm:px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center space-x-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                        onClick={handleSaveChanges}
+                        className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg hover:shadow-lg transition-all duration-300 font-medium"
                       >
-                        <Plus size={16} />
-                        <span>Add Savings</span>
+                        Save Changes
                       </button>
                     </div>
-
-                    {remainingAmount > 0 && (
-                      <div className="bg-green-50 rounded-lg p-3">
-                        <p className="text-sm text-green-700">
-                          <span className="font-medium">
-                            Remaining to goal:
-                          </span>{" "}
-                          ₱{remainingAmount.toLocaleString()}
-                        </p>
-                      </div>
-                    )}
-
-                    {progressPercentage >= 100 && (
-                      <div className="bg-green-100 border border-green-200 rounded-lg p-3">
-                        <p className="text-sm text-green-800 font-medium text-center">
-                          Congratulations! You've reached your savings goal!
-                        </p>
-                      </div>
-                    )}
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="relative mb-6">
+                  <div className="absolute -inset-1 bg-gradient-to-r from-purple-200/30 to-purple-300/20 rounded-xl blur opacity-30"></div>
+                  <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-purple-100/50 p-4 sm:p-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center space-x-2">
+                      <Plus size={18} />
+                      <span>Add Savings</span>
+                    </h3>
+
+                    <div className="space-y-3">
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="flex-1 relative">
+                          <DollarSign
+                            size={18}
+                            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                          />
+                          <input
+                            type="number"
+                            placeholder="Enter savings amount"
+                            value={savingsAmount}
+                            onChange={(e) => setSavingsAmount(e.target.value)}
+                            className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                            min="0"
+                            step="0.01"
+                            max={remainingAmount}
+                          />
+                        </div>
+                        <button
+                          onClick={handleAddSavings}
+                          disabled={
+                            !savingsAmount || Number(savingsAmount) <= 0
+                          }
+                          className="px-4 sm:px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center space-x-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                        >
+                          <Plus size={16} />
+                          <span>Add Savings</span>
+                        </button>
+                      </div>
+
+                      {remainingAmount > 0 && (
+                        <div className="bg-green-50 rounded-lg p-3">
+                          <p className="text-sm text-green-700">
+                            <span className="font-medium">
+                              Remaining to goal:
+                            </span>{" "}
+                            ₱{remainingAmount.toLocaleString()}
+                          </p>
+                        </div>
+                      )}
+
+                      {progressPercentage >= 100 && (
+                        <div className="bg-green-100 border border-green-200 rounded-lg p-3">
+                          <p className="text-sm text-green-800 font-medium text-center">
+                            Congratulations! You've reached your savings goal!
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right Panel: Transaction History */}

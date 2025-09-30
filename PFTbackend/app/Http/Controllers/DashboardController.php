@@ -258,6 +258,35 @@ class DashboardController extends Controller
         ]);
     }
 
+    public function updateGoal(Request $request, $id)
+    {
+        // Validate request
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'target_amount' => 'required|numeric|min:0',
+            'deadline' => 'nullable|date',
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        // Find the goal belonging to the logged-in user
+        $goal = SavingsGoal::where('goal_id', $id)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        // Update goal
+        $goal->update([
+            'title' => $request->title,
+            'target_amount' => $request->target_amount,
+            'deadline' => $request->deadline,
+            'description' => $request->description,
+        ]);
+
+        return response()->json([
+            'message' => 'Savings goal updated successfully',
+            'goal' => $goal,
+        ]);
+    }
+
     // -------------------
     // Reports
     // -------------------

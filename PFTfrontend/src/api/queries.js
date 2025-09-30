@@ -105,10 +105,7 @@ export const useAddGoal = () => {
     onMutate: async (newGoalData) => {
       await queryClient.cancelQueries(["goals"]);
       const previousGoalData = queryClient.getQueryData(["goals"]);
-      queryClient.setQueryData(["goals"], (old = []) => [
-        ...old,
-        newGoalData,
-      ]);
+      queryClient.setQueryData(["goals"], (old = []) => [...old, newGoalData]);
       return { previousGoalData };
     },
     onError: (context) => {
@@ -254,9 +251,41 @@ export const useUpdateBudget = () => {
 
 export const useUpdateGoal = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: ({ id, data }) => updateGoal(id, data),
-    onSuccess: () => queryClient.invalidateQueries(["goals"]),
+
+    // 👇 Optimistic Update
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries(["goals"]);
+
+      // Snapshot the previous goals
+      const previousGoals = queryClient.getQueryData(["goals"]);
+
+      // Optimistically update the cache
+      queryClient.setQueryData(["goals"], (oldGoals) =>
+        oldGoals
+          ? oldGoals.map((goal) =>
+              goal.id === id ? { ...goal, ...data } : goal
+            )
+          : []
+      );
+
+      // Return context so we can rollback if error
+      return { previousGoals };
+    },
+
+    // If error, rollback to previous state
+    onError: (err, variables, context) => {
+      if (context?.previousGoals) {
+        queryClient.setQueryData(["goals"], context.previousGoals);
+      }
+    },
+
+    // After success or failure, refetch goals
+    onSettled: () => {
+      queryClient.invalidateQueries(["goals"]);
+    },
   });
 };
 

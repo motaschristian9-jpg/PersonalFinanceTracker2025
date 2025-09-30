@@ -56,7 +56,7 @@ export default function SavingsPage() {
   const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6"];
 
   // Mutations
-  const createGoalMutation = useAddGoal();
+  const addGoalMutation = useAddGoal();
 
   const updateGoalMutation = useMutation({
     mutationFn: (goalData) =>

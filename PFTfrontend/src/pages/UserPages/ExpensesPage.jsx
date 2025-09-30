@@ -27,6 +27,7 @@ import {
   updateTransaction,
   deleteTransaction,
 } from "../../api/api";
+import { useUpdateTransaction } from "../../api/queries";
 
 export default function ExpensesPage() {
   const queryClient = useQueryClient();
@@ -54,10 +55,7 @@ export default function ExpensesPage() {
     onSuccess: () => queryClient.invalidateQueries(["transactions"]),
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => updateTransaction(id, data),
-    onSuccess: () => queryClient.invalidateQueries(["transactions"]),
-  });
+  const updateMutation = useUpdateTransaction();
 
   const deleteMutation = useMutation({
     mutationFn: deleteTransaction,
@@ -82,7 +80,6 @@ export default function ExpensesPage() {
       amount: tx.amount || "",
       description: tx.description || "",
       transaction_date: formattedDate,
-      expense_type: tx.expense_type || "Variable", // support type
     });
 
     setModalOpen(true);
@@ -111,7 +108,6 @@ export default function ExpensesPage() {
       amount: parseFloat(data.amount),
       transaction_date: data.transaction_date,
       description: data.description || "",
-      expense_type: data.expense_type || "Variable",
     };
 
     if (editingId) {
@@ -128,9 +124,9 @@ export default function ExpensesPage() {
 
   // Filtering logic
   const filteredExpenses = expenseTransactions.filter((tx) => {
-    const descMatch = tx.description
-      ?.toLowerCase()
-      .includes(search.toLowerCase());
+    // Ensure tx.description is a string before calling toLowerCase()
+    const description = tx.description || "";
+    const descMatch = description.toLowerCase().includes(search.toLowerCase());
 
     let dateMatch = true;
     const txDate = new Date(tx.transaction_date);
@@ -406,7 +402,7 @@ export default function ExpensesPage() {
           <div className="overflow-x-auto">
             <div className="max-h-96 overflow-y-auto">
               <table className="w-full text-left">
-                <thead className="bg-red-50/50 sticky top-0">
+                <thead className="bg-red-50 sticky top-0">
                   <tr>
                     <th className="py-4 px-6 font-semibold text-gray-700">
                       Date

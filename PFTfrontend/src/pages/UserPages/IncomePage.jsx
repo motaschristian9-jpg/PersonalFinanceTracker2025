@@ -26,6 +26,7 @@ import {
   updateTransaction,
   deleteTransaction,
 } from "../../api/api";
+import { useUpdateTransaction } from "../../api/queries";
 
 export default function IncomePage() {
   const queryClient = useQueryClient();
@@ -53,10 +54,7 @@ export default function IncomePage() {
     onSuccess: () => queryClient.invalidateQueries(["transactions"]),
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => updateTransaction(id, data),
-    onSuccess: () => queryClient.invalidateQueries(["transactions"]),
-  });
+  const updateMutation = useUpdateTransaction();
 
   const deleteMutation = useMutation({
     mutationFn: deleteTransaction,
@@ -407,7 +405,7 @@ export default function IncomePage() {
           <div className="overflow-x-auto">
             <div className="max-h-96 overflow-y-auto">
               <table className="w-full text-left">
-                <thead className="bg-emerald-50/50 sticky top-0">
+                <thead className="bg-green-50 sticky top-0">
                   <tr>
                     <th className="py-4 px-6 font-semibold text-gray-700">
                       Date

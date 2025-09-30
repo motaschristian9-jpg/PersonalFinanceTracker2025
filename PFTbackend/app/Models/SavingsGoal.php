@@ -15,7 +15,6 @@ class SavingsGoal extends Model
         'user_id',
         'title',
         'target_amount',
-        'current_amount',
         'deadline',
     ];
 

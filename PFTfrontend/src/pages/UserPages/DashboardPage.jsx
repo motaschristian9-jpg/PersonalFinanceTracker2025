@@ -110,6 +110,7 @@ export default function Dashboard() {
 
         await addTransactionMutation.mutateAsync(txData);
         message = modalType === "income" ? "Income added!" : "Expense added!";
+
       } else if (modalType === "budget") {
         const budgetData = {
           category: data.category,
@@ -121,11 +122,13 @@ export default function Dashboard() {
 
         await addBudgetMutation.mutateAsync(budgetData);
         message = "Budget set!";
+
       } else if (modalType === "goal") {
         const goalData = {
           title: data.title,
           target_amount: Number(data.target_amount),
           deadline: data.deadline || null,
+          description: data.description,
         };
 
         await addGoalMutation.mutateAsync(goalData);

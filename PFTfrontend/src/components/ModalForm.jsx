@@ -163,7 +163,9 @@ export default function ModalForm({
             !formData.start_date ||
             !formData.end_date
           ) {
-            throw new Error("Category, amount, start and end date are required.");
+            throw new Error(
+              "Category, amount, start and end date are required."
+            );
           }
 
           payload = {
@@ -177,13 +179,16 @@ export default function ModalForm({
         }
       } else if (type === "goal") {
         if (!formData.title || !formData.target_amount || !formData.deadline) {
-          throw new Error("Goal name, target amount, and deadline are required.");
+          throw new Error(
+            "Goal name, target amount, and deadline are required."
+          );
         }
 
         payload = {
           title: formData.title,
           target_amount: Number(formData.target_amount),
           deadline: formData.deadline,
+          description: formData.description || "",
           editingId: editingId || null,
         };
       } else {
@@ -623,6 +628,30 @@ export default function ModalForm({
                           })
                         }
                         className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Description
+                    </label>
+                    <div className="relative">
+                      <FileText
+                        size={18}
+                        className="absolute left-3 top-3 text-gray-400"
+                      />
+                      <textarea
+                        placeholder="Enter a short description (optional)"
+                        value={formData.description || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            description: e.target.value,
+                          })
+                        }
+                        rows={3}
+                        className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
                       />
                     </div>
                   </div>

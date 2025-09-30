@@ -77,6 +77,7 @@ export const addGoal = (goalData) =>
     title: goalData.title,
     target_amount: Number(goalData.target_amount),
     deadline: goalData.deadline || null,
+    description: goalData.description,
   });
 
 

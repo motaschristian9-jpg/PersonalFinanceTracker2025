@@ -241,6 +241,7 @@ class DashboardController extends Controller
             'title' => 'required|string|max:255',
             'target_amount' => 'required|numeric|min:0',
             'deadline' => 'nullable|date',
+            'description' => 'nullable|string|max:255',
         ]);
 
         $goal = SavingsGoal::create([
@@ -248,7 +249,7 @@ class DashboardController extends Controller
             'title' => $request->title,
             'target_amount' => $request->target_amount,
             'deadline' => $request->deadline,
-            'current_amount' => 0,
+            'description' => $request->description,
         ]);
 
         return response()->json([
@@ -275,7 +276,7 @@ class DashboardController extends Controller
 
         $balance = $totalIncome - $totalExpenses;
 
-        $totalSaved = SavingsGoal::where('user_id', $userId)->sum('current_amount');
+        $totalSaved = 0;
         $totalTarget = SavingsGoal::where('user_id', $userId)->sum('target_amount');
         $savingsProgress = $totalTarget > 0 ? round(($totalSaved / $totalTarget) * 100) : 0;
 

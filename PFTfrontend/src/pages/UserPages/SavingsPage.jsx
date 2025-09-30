@@ -49,11 +49,12 @@ export default function SavingsPage() {
   const [selectedGoal, setSelectedGoal] = useState(null);
   const [modalType, setModalType] = useState("");
   const [formData, setFormData] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [activeGoal, setActiveGoal] = useState(null);
   const [savingsModalOpen, setSavingsModalOpen] = useState(false);
 
   const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6"];
+  const MAX_GOALS = 9;
 
   // Mutations
   const addGoalMutation = useAddGoal();
@@ -67,7 +68,7 @@ export default function SavingsPage() {
         prev.map((g) => (g.goal_id === goalData.goal_id ? res.data : g))
       );
       Swal.fire("Updated!", "Your savings goal has been updated.", "success");
-      setIsModalOpen(false);
+      setModalOpen(false);
     },
     onError: () => {
       Swal.fire("Error", "Failed to update the goal.", "error");
@@ -115,7 +116,16 @@ export default function SavingsPage() {
   }, [goals]);
 
   // Handlers
-  const handleAddGoal = () => {
+  const handleOpenModal = (goal = null) => {
+    if (!goal && goals.length >= MAX_GOALS) {
+      Swal.fire({
+        icon: "warning",
+        title: "Limit Reached",
+        text: `You can only create up to ${MAX_GOALS} budgets.`,
+        confirmButtonColor: "#3085d6",
+      });
+      return;
+    }
     setModalType("goal");
     setFormData({
       category: "",
@@ -130,14 +140,14 @@ export default function SavingsPage() {
       end_date: "",
     });
     setSelectedGoal(null);
-    setIsModalOpen(true);
+    setModalOpen(true);
   };
 
-  const handleCloseModal = () => setIsModalOpen(false);
+  const handleCloseModal = () => setModalOpen(false);
 
   const handleEditGoal = (goal) => {
     setSelectedGoal(goal);
-    setIsModalOpen(true);
+    setModalOpen(true);
   };
 
   const handleDeleteGoal = async (goalId) => {
@@ -291,7 +301,7 @@ export default function SavingsPage() {
             </div>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
               <button
-                onClick={handleAddGoal}
+                onClick={() => handleOpenModal()}
                 className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base w-full sm:w-auto"
               >
                 <Plus size={16} className="sm:w-[18px] sm:h-[18px]" />
@@ -815,7 +825,7 @@ export default function SavingsPage() {
       {/* Modals */}
 
       <ModalForm
-        isOpen={isModalOpen}
+        isOpen={modalOpen}
         type={modalType}
         formData={formData}
         setFormData={setFormData}

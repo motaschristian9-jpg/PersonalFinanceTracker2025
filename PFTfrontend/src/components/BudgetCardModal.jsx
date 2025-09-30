@@ -18,6 +18,7 @@ export default function BudgetModal({
   onEditBudget,
   onAddExpense,
   onDeleteTransaction,
+  onDeleteBudget,
 }) {
   const [localBudget, setLocalBudget] = useState(
     budget || { allocated: 0, spent: 0, description: "" }
@@ -33,7 +34,8 @@ export default function BudgetModal({
   );
 
   const remaining = isEditing
-    ? Number(allocatedInput || 0) - Number(localBudget.spent || 0)
+    ? Number(allocatedInput || localBudget.amount || 0) -
+      Number(localBudget.spent || 0)
     : Number(localBudget.amount || 0) - Number(localBudget.spent || 0);
 
   useEffect(() => {
@@ -142,6 +144,12 @@ export default function BudgetModal({
                   <span className="hidden sm:inline">
                     {isEditing ? "Cancel" : "Edit"}
                   </span>
+                </button>
+                <button
+                  className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                  onClick={() => onDeleteBudget(budget)}
+                >
+                  <Trash2 size={16} />
                 </button>
                 <button
                   onClick={onClose}

@@ -27,7 +27,7 @@ import {
   updateTransaction,
   deleteTransaction,
 } from "../../api/api";
-import { useUpdateTransaction } from "../../api/queries";
+import { useAddTransaction, useDeleteTransaction, useUpdateTransaction } from "../../api/queries";
 
 export default function ExpensesPage() {
   const queryClient = useQueryClient();
@@ -50,20 +50,14 @@ export default function ExpensesPage() {
   );
 
   // Mutations
-  const addMutation = useMutation({
-    mutationFn: addTransaction,
-    onSuccess: () => queryClient.invalidateQueries(["transactions"]),
-  });
+  const addTransactionMutation = useAddTransaction();
 
-  const updateMutation = useUpdateTransaction();
+  const updateTransactionMutation = useUpdateTransaction();
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteTransaction,
-    onSuccess: () => queryClient.invalidateQueries(["transactions"]),
-  });
+  const deleteTransactionMutation = useDeleteTransaction();
 
   // Modal handling
-  const handleAdd = () => {
+  const handleOpenModal = () => {
     setFormData({});
     setEditingId(null);
     setModalOpen(true);
@@ -96,7 +90,7 @@ export default function ExpensesPage() {
       confirmButtonText: "Yes, delete it!",
     });
     if (confirm.isConfirmed) {
-      await deleteMutation.mutateAsync(id);
+      await deleteTransactionMutation.mutateAsync(id);
       Swal.fire("Deleted!", "Expense record has been deleted.", "success");
     }
   };
@@ -111,10 +105,10 @@ export default function ExpensesPage() {
     };
 
     if (editingId) {
-      await updateMutation.mutateAsync({ id: editingId, data: payload });
+      await updateTransactionMutation.mutateAsync({ id: editingId, data: payload });
       Swal.fire("Updated!", "Expense updated successfully.", "success");
     } else {
-      await addMutation.mutateAsync(payload);
+      await addTransactionMutation.mutateAsync(payload);
       Swal.fire("Added!", "New expense record added.", "success");
     }
 
@@ -197,7 +191,7 @@ export default function ExpensesPage() {
             </div>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
-                onClick={handleAdd}
+                onClick={handleOpenModal}
                 className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base"
               >
                 <MinusCircle size={16} className="sm:w-[18px] sm:h-[18px]" />

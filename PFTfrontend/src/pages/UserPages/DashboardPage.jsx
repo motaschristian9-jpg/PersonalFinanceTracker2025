@@ -29,7 +29,7 @@ import {
 
 import ModalForm from "../../components/ModalForm";
 import SavingsCardModal from "../../components/SavingsCardModal";
-import { useAddTransaction, useAddGoal } from "../../api/queries";
+import { useAddTransaction, useAddGoal, useAddBudget } from "../../api/queries";
 import { addTransaction, addBudget } from "../../api/api";
 
 export default function Dashboard() {
@@ -46,24 +46,38 @@ export default function Dashboard() {
   const [selectedGoal, setSelectedGoal] = useState(null);
 
   const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444"];
+  const MAX_ITEMS = 9;
+  const budgetSpent = (budgetId) => {
+    return transactions
+      .filter((tx) => tx.budget_id === budgetId)
+      .reduce((sum, tx) => sum + Number(tx.amount), 0);
+  };
 
   // ================= Mutations =================
   const addTransactionMutation = useAddTransaction();
+
+  const addBudgetMutation = useAddBudget();
+
   const addGoalMutation = useAddGoal();
-
-  const transactionMutation = useMutation({
-    mutationFn: addTransaction,
-    onSuccess: () => queryClient.invalidateQueries(["transactions", "reports"]),
-  });
-
-  const budgetMutation = useMutation({
-    mutationFn: addBudget,
-    onSuccess: () => queryClient.invalidateQueries(["budgets"]),
-  });
 
   // ================= Modal Handlers =================
   const handleOpenModal = (type) => {
-    setModalType(type); // "income", "expense", "budget", "goal"
+    if (
+      (type === "budget" && budgets.length >= MAX_ITEMS) ||
+      (type === "goal" && goals.length >= MAX_ITEMS)
+    ) {
+      Swal.fire({
+        icon: "warning",
+        title: "Limit Reached",
+        text: `You can only create up to ${MAX_ITEMS} ${
+          type === "budget" ? "budgets" : "savings goals"
+        }.`,
+        confirmButtonColor: "#F59E0B",
+      });
+      return;
+    }
+
+    setModalType(type);
     setFormData({
       category: "",
       customCategory: "",
@@ -88,8 +102,7 @@ export default function Dashboard() {
       if (modalType === "income" || modalType === "expense") {
         const txData = {
           type: modalType === "income" ? "Income" : "Expense",
-          category:
-            data.category === "Other" ? data.customCategory : data.category,
+          category: data.category,
           amount: parseFloat(data.amount),
           transaction_date: data.transaction_date,
           description: data.description || "",
@@ -99,29 +112,29 @@ export default function Dashboard() {
         message = modalType === "income" ? "Income added!" : "Expense added!";
       } else if (modalType === "budget") {
         const budgetData = {
-          category:
-            data.category === "Other" ? data.customCategory : data.category,
-          amount: Number(data.limit || data.amount),
+          category: data.category,
+          amount: Number(data.amount),
           start_date: data.start_date,
           end_date: data.end_date,
           description: data.description || "",
         };
-        await budgetMutation.mutateAsync(budgetData);
+
+        await addBudgetMutation.mutateAsync(budgetData);
         message = "Budget set!";
       } else if (modalType === "goal") {
         const goalData = {
           title: data.title,
           target_amount: Number(data.target_amount),
           deadline: data.deadline || null,
-          description: data.description || "",
         };
+
         await addGoalMutation.mutateAsync(goalData);
         message = "Savings goal created!";
+
         queryClient.invalidateQueries(["goals", "reports"]);
       }
 
       handleCloseModal();
-
       Swal.fire({
         icon: "success",
         title: "Success",
@@ -129,7 +142,6 @@ export default function Dashboard() {
         confirmButtonColor: "#10B981",
       });
     } catch (error) {
-      console.error("Error submitting form:", error);
       Swal.fire({
         icon: "error",
         title: "Oops!",
@@ -211,7 +223,7 @@ export default function Dashboard() {
                 <h3 className="font-semibold text-gray-700 text-sm">
                   Total Income
                 </h3>
-                <p className="text-2xl font-bold text-gray-800">
+                <p className="text-2xl font-bold text-green-600">
                   ₱{Number(reports?.totalIncome || 0).toFixed(2)}
                 </p>
               </div>
@@ -230,7 +242,7 @@ export default function Dashboard() {
                 <h3 className="font-semibold text-gray-700 text-sm">
                   Total Expenses
                 </h3>
-                <p className="text-2xl font-bold text-gray-800">
+                <p className="text-2xl font-bold text-red-500">
                   ₱{Number(reports?.totalExpenses || 0).toFixed(2)}
                 </p>
               </div>
@@ -536,24 +548,27 @@ export default function Dashboard() {
                   <p>No budgets yet.</p>
                 </div>
               ) : (
-                budgets.map((b, index) => (
-                  <div
-                    key={b.id || `budget-${index}`}
-                    className="flex justify-between items-center p-3 bg-blue-50/50 rounded-lg"
-                  >
-                    <span className="font-medium text-gray-800">
-                      {b.category}
-                    </span>
-                    <div className="text-right">
-                      <div className="text-sm font-bold text-blue-600">
-                        ₱{b.limit}
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        Spent: ₱{b.spent}
+                budgets.map((b, index) => {
+                  const spent = budgetSpent(b.budget_id); // 👈 calculate spent for this budget
+                  return (
+                    <div
+                      key={b.id || `budget-${index}`}
+                      className="flex justify-between items-center p-3 bg-blue-50/50 rounded-lg"
+                    >
+                      <span className="font-medium text-gray-800">
+                        {b.category}
+                      </span>
+                      <div className="text-right">
+                        <div className="text-sm font-bold text-blue-600">
+                          ₱{b.amount}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          Spent: ₱{spent}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>

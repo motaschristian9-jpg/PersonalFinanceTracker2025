@@ -53,7 +53,7 @@ export default function BudgetsPage() {
   const [activeBudget, setActiveBudget] = useState(null);
 
   const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6"];
-  const MAX_BUDGETS = 5;
+  const MAX_BUDGETS = 9;
 
   const safeNumber = (n) => (typeof n === "number" ? n : 0);
 
@@ -92,7 +92,7 @@ export default function BudgetsPage() {
   }).length;
 
   // Mutations
-  const budgetMutation = useAddBudget();
+  const addBudgetMutation = useAddBudget();
   const updateBudgetMutation = useUpdateBudget();
   const deleteBudgetMutation = useDeleteBudget();
   const addExpenseMutation = useAddExpenseToBudget();
@@ -238,7 +238,7 @@ export default function BudgetsPage() {
           confirmButtonColor: "#10B981",
         });
       } else {
-        await budgetMutation.mutateAsync({ ...data });
+        await addBudgetMutation.mutateAsync({ ...data });
         Swal.fire({
           icon: "success",
           title: "Budget added!",
@@ -267,12 +267,19 @@ export default function BudgetsPage() {
       confirmButtonText: "Yes, delete it!",
     }).then(async (result) => {
       if (result.isConfirmed) {
-        await deleteBudgetMutation.mutateAsync(budget.budget_id);
-        Swal.fire(
-          "Deleted!",
-          `${budget.category} budget has been deleted.`,
-          "success"
-        );
+        try {
+          await deleteBudgetMutation.mutateAsync(budget.budget_id);
+
+          Swal.fire(
+            "Deleted!",
+            `${budget.category} budget has been deleted.`,
+            "success"
+          ).then(() => {
+            setBudgetModalOpen(false);
+          });
+        } catch (error) {
+          Swal.fire("Error", "Failed to delete budget.", "error");
+        }
       }
     });
   };
@@ -786,6 +793,7 @@ export default function BudgetsPage() {
           onEditBudget={handleEditBudget}
           onAddExpense={handleAddExpense}
           onDeleteTransaction={handleDeleteTransaction}
+          onDeleteBudget={handleDelete}
         />
       )}
     </div>

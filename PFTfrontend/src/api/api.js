@@ -63,20 +63,20 @@ export const addTransaction = (txData) =>
     description: txData.description || "",
   });
 
-export const addBudget = (data) =>
+export const addBudget = (budgetData) =>
   api.post("/dashboard/budgets", {
-    category: data.category,
-    amount: Number(data.amount),
-    start_date: data.start_date,
-    end_date: data.end_date,
-    description: data.description || "", // optional description
+    category: budgetData.category,
+    amount: Number(budgetData.amount),
+    start_date: budgetData.start_date,
+    end_date: budgetData.end_date,
+    description: budgetData.description || "",
   });
 
-export const addGoal = (data) =>
+export const addGoal = (goalData) =>
   api.post("/dashboard/savings-goals", {
-    title: data.title,
-    target_amount: Number(data.target_amount),
-    deadline: data.deadline || null,
+    title: goalData.title,
+    target_amount: Number(goalData.target_amount),
+    deadline: goalData.deadline || null,
   });
 
 

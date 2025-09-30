@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import Swal from "sweetalert2";
 import {
   X,
   Loader2,
@@ -134,9 +135,9 @@ export default function ModalForm({
 
       if (type === "income" || type === "expense") {
         if (
+          !formData.category ||
           !formData.amount ||
-          !formData.transaction_date ||
-          !formData.category
+          !formData.transaction_date
         ) {
           throw new Error("Category, amount, and date are required.");
         }
@@ -162,8 +163,9 @@ export default function ModalForm({
             !formData.start_date ||
             !formData.end_date
           ) {
-            throw new Error("All budget fields are required.");
+            throw new Error("Category, amount, start and end date are required.");
           }
+
           payload = {
             category: formData.category,
             amount: Number(formData.amount),
@@ -174,13 +176,10 @@ export default function ModalForm({
           };
         }
       } else if (type === "goal") {
-        if (
-          !formData.title ||
-          !formData.target_amount ||
-          !formData.deadline
-        ) {
-          throw new Error("All goal fields are required.");
+        if (!formData.title || !formData.target_amount || !formData.deadline) {
+          throw new Error("Goal name, target amount, and deadline are required.");
         }
+
         payload = {
           title: formData.title,
           target_amount: Number(formData.target_amount),
@@ -195,15 +194,18 @@ export default function ModalForm({
 
       if (expenseAmount) setExpenseAmount("");
     } catch (err) {
-      console.error("Form submission error:", err);
-
       const errorMessage =
         err.response?.data?.message ||
         (err.response?.data?.errors
           ? Object.values(err.response.data.errors).flat().join("\n")
           : err.message || "Something went wrong. Please try again.");
 
-      alert(errorMessage);
+      Swal.fire({
+        icon: "error",
+        title: "Oops!",
+        text: errorMessage,
+        confirmButtonColor: "#EF4444",
+      });
     } finally {
       setLoading(false);
     }
@@ -594,7 +596,10 @@ export default function ModalForm({
                         placeholder="0.00"
                         value={formData.target_amount || ""}
                         onChange={(e) =>
-                          setFormData({ ...formData, target_amount: e.target.value })
+                          setFormData({
+                            ...formData,
+                            target_amount: e.target.value,
+                          })
                         }
                         min="0"
                         step="0.01"

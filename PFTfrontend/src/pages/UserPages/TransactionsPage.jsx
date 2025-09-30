@@ -3,7 +3,7 @@ import {
   PlusCircle,
   MinusCircle,
   Edit,
-  Trash,
+  Trash2,
   Loader2,
   Search,
   Filter,
@@ -37,7 +37,9 @@ export default function Transactions() {
 
   // ================= Mutations =================
   const addTransactionMutation = useAddTransaction();
+
   const updateTransactionMutation = useUpdateTransaction();
+
   const deleteTransactionMutation = useDeleteTransaction();
 
   // ================= Modal Handlers =================
@@ -445,7 +447,7 @@ export default function Transactions() {
                                 className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
                                 onClick={() => handleDelete(txId)}
                               >
-                                <Trash size={16} />
+                                <Trash2 size={16} />
                               </button>
                             </div>
                           </td>
@@ -579,7 +581,7 @@ export default function Transactions() {
                             className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
                             onClick={() => handleDelete(txId)}
                           >
-                            <Trash size={14} />
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </div>

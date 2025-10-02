@@ -80,13 +80,17 @@ export const addGoal = (goalData) =>
     description: goalData.description,
   });
 
-
-
 export const addExpenseToBudget = (data) =>
   api.post(`/dashboard/budgets/${data.budget_id}/add-expense`, {
     title: data.title,
     amount: Number(data.amount),
     description: data.description || "",
+  });
+
+export const addContribution = (data) =>
+  api.post(`/dashboard/goals/${data.goal_id}/add-contribution`, {
+    amount: Number(data.amount),
+    date: data.date,
   });
 
 // --- Updating Data ---
@@ -118,6 +122,7 @@ export const deleteBudget = (id) => api.delete(`/dashboard/budgets/${id}`);
 
 export const deleteGoal = (id) => api.delete(`/dashboard/savings-goals/${id}`);
 
+export const deleteContribution = (id) => api.delete(`/dashboard/contributions/${id}`)
 // --- Reports Data ---
 
 export const generateReport = (data) => api.post("/dashboard/reports", data);

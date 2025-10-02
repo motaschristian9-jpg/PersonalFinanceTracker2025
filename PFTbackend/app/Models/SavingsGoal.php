@@ -9,7 +9,7 @@ class SavingsGoal extends Model
 {
     use HasFactory;
 
-    protected $primaryKey = 'goal_id';
+    protected $primaryKey = 'goal_id'; // ✅ you set this already
 
     protected $fillable = [
         'user_id',
@@ -22,5 +22,11 @@ class SavingsGoal extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function contributions()
+    {
+        // hasMany: goals.goal_id → contributions.goal_id
+        return $this->hasMany(SavingsContribution::class, 'goal_id', 'goal_id');
     }
 }

@@ -48,6 +48,11 @@ Route::middleware([JWTMiddleware::class])->group(function () {
         Route::put('savings-goals/{id}', [DashboardController::class, 'updateGoal']);
         Route::delete('savings-goals/{id}', [DashboardController::class, 'deleteGoal']);
 
+        Route::post('goals/{id}/add-contribution', [DashboardController::class, 'addContribution']
+        );
+        Route::delete('contributions/{id}', [DashboardController::class, 'deleteContribution']
+        );
+
         // Reports
         Route::get('reports', [DashboardController::class, 'reports']);
     });

@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Transaction;
 use App\Models\Budget;
 use App\Models\SavingsGoal;
+use App\Models\SavingsContribution;
 
 class DashboardController extends Controller
 {
@@ -231,8 +232,55 @@ class DashboardController extends Controller
 
     public function goals(Request $request)
     {
-        $goals = SavingsGoal::where('user_id', $request->user()->id)->get();
+        $goals = SavingsGoal::with('contributions') // now Laravel knows this relationship
+            ->where('user_id', $request->user()->id)
+            ->get();
+
         return response()->json($goals);
+    }
+
+    public function addContribution(Request $request, $goal_id)
+    {
+        $request->validate([
+            'amount' => 'required|numeric|min:1',
+            'date' => 'nullable|date',
+        ]);
+
+        // ✅ Ensure goal exists and belongs to user
+        $goal = SavingsGoal::where('goal_id', $goal_id)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        // ✅ Create the contribution
+        $contribution = SavingsContribution::create([
+            'goal_id' => $goal->goal_id,
+            'amount' => $request->amount,
+            'date' => $request->date ?? now()->toDateString(),
+        ]);
+
+        return response()->json([
+            'message' => 'Contribution added successfully!',
+            'contribution' => $contribution,
+        ], 201);
+    }
+
+    public function deleteContribution($id)
+    {
+        $contribution = SavingsContribution::find($id);
+
+        if (!$contribution) {
+            return response()->json(['message' => 'Contribution not found'], 404);
+        }
+
+        // ✅ Ensure the goal belongs to the authenticated user
+        $goal = $contribution->goal;
+        if (!$goal || $goal->user_id !== auth()->id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $contribution->delete();
+
+        return response()->json(['message' => 'Contribution deleted successfully']);
     }
 
     public function storeGoal(Request $request)
@@ -286,6 +334,25 @@ class DashboardController extends Controller
             'goal' => $goal,
         ]);
     }
+
+    public function deleteGoal($id)
+    {
+        $goal = SavingsGoal::where('goal_id', $id)
+            ->where('user_id', auth()->id()) // ensure the user owns this goal
+            ->first();
+
+        if (!$goal) {
+            return response()->json(['message' => 'Goal not found'], 404);
+        }
+
+        // Optionally, delete related contributions first
+        $goal->contributions()->delete();
+
+        $goal->delete();
+
+        return response()->json(['message' => 'Goal deleted successfully']);
+    }
+
 
     // -------------------
     // Reports

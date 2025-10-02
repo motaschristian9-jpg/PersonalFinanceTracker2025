@@ -8,12 +8,14 @@ import {
   addTransaction,
   addBudget,
   addGoal,
+  addContribution,
   updateTransaction,
   updateBudget,
   updateGoal,
   deleteTransaction,
   deleteBudget,
   deleteGoal,
+  deleteContribution,
   addExpenseToBudget, // <- import new API function
 } from "./api";
 
@@ -115,6 +117,69 @@ export const useAddGoal = () => {
     },
     onSettled: () => {
       queryClient.invalidateQueries(["goals"]);
+    },
+  });
+};
+
+export const useAddContribution = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: addContribution,
+
+    // ✅ Optimistic update
+    onMutate: async (newContribution) => {
+      await queryClient.cancelQueries(["goals"]);
+      await queryClient.cancelQueries(["reports"]);
+
+      // Snapshot previous values
+      const previousGoals = queryClient.getQueryData(["goals"]);
+      const previousReports = queryClient.getQueryData(["reports"]);
+
+      // Optimistically update goals
+      if (previousGoals) {
+        queryClient.setQueryData(["goals"], (oldGoals) =>
+          oldGoals.map((goal) =>
+            goal.goal_id === newContribution.goal_id
+              ? {
+                  ...goal,
+                  contributions: [
+                    ...(goal.contributions || []),
+                    { ...newContribution, id: Date.now() }, // fake id for now
+                  ],
+                }
+              : goal
+          )
+        );
+      }
+
+      // (Optional) update reports optimistically too
+      // Example: add to totalSaved
+      if (previousReports) {
+        queryClient.setQueryData(["reports"], (oldReports) => ({
+          ...oldReports,
+          totalSaved:
+            (oldReports.totalSaved || 0) + Number(newContribution.amount),
+        }));
+      }
+
+      return { previousGoals, previousReports };
+    },
+
+    // Rollback on error
+    onError: (err, newContribution, context) => {
+      if (context?.previousGoals) {
+        queryClient.setQueryData(["goals"], context.previousGoals);
+      }
+      if (context?.previousReports) {
+        queryClient.setQueryData(["reports"], context.previousReports);
+      }
+    },
+
+    // ✅ Refetch after success or error
+    onSettled: () => {
+      queryClient.invalidateQueries(["goals"]);
+      queryClient.invalidateQueries(["reports"]);
     },
   });
 };
@@ -350,10 +415,76 @@ export const useDeleteBudget = () => {
   });
 };
 
+export const useDeleteContribution = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteContribution, // ✅ you need to define this API call
+
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["goals"] });
+
+      // Snapshot before deletion
+      const previousGoals = queryClient.getQueryData(["goals"]);
+
+      // Optimistically update contributions
+      queryClient.setQueryData(["goals"], (oldGoals = []) =>
+        oldGoals.map((goal) => ({
+          ...goal,
+          contributions:
+            goal.contributions?.filter(
+              (contribution) => contribution.id !== id
+            ) ?? [],
+        }))
+      );
+
+      return { previousGoals };
+    },
+
+    onError: (err, id, context) => {
+      if (context?.previousGoals) {
+        queryClient.setQueryData(["goals"], context.previousGoals);
+      }
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries(["goals"]);
+      queryClient.invalidateQueries(["reports"]);
+    },
+  });
+};
+
 export const useDeleteGoal = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: deleteGoal,
-    onSuccess: () => queryClient.invalidateQueries(["goals"]),
+
+    // Optimistic update
+    onMutate: async (goalId) => {
+      await queryClient.cancelQueries({ queryKey: ["goals"] });
+
+      // Snapshot previous goals
+      const previousGoals = queryClient.getQueryData(["goals"]);
+
+      // Remove goal immediately from cache
+      queryClient.setQueryData(["goals"], (old = []) =>
+        old.filter((goal) => goal.id !== goalId)
+      );
+
+      return { previousGoals };
+    },
+
+    onError: (err, goalId, context) => {
+      // Revert cache if error
+      if (context?.previousGoals) {
+        queryClient.setQueryData(["goals"], context.previousGoals);
+      }
+    },
+
+    onSettled: () => {
+      // Refetch to ensure consistency
+      queryClient.invalidateQueries(["goals"]);
+    },
   });
 };

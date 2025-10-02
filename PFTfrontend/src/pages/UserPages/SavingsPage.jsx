@@ -41,7 +41,13 @@ import {
 import SavingsCardModal from "../../components/SavingsCardModal";
 import Swal from "sweetalert2";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAddGoal, useUpdateGoal } from "../../api/queries";
+import {
+  useAddGoal,
+  useUpdateGoal,
+  useAddContribution,
+  useDeleteContribution,
+  useDeleteGoal,
+} from "../../api/queries";
 
 export default function SavingsPage() {
   const queryClient = useQueryClient();
@@ -61,6 +67,12 @@ export default function SavingsPage() {
 
   const updateGoalMutation = useUpdateGoal();
 
+  const deleteGoalMutation = useDeleteGoal();
+
+  const addContributionMutation = useAddContribution();
+
+  const deleteTransactionMutation = useDeleteContribution();
+
   // Helper functions
   const getStatus = (goal) => {
     if (Number(goal.current_amount) >= Number(goal.target_amount))
@@ -76,10 +88,16 @@ export default function SavingsPage() {
     (sum, g) => sum + Number(g.target_amount),
     0
   );
-  const totalSaved = goals.reduce(
-    (sum, g) => sum + Number(g.current_amount),
-    0
-  );
+
+  const totalSaved = goals.reduce((sum, g) => {
+    const goalContributions = g.contributions ?? [];
+    const goalTotal = goalContributions.reduce(
+      (s, c) => s + Number(c.amount || 0),
+      0
+    );
+    return sum + goalTotal;
+  }, 0);
+
   const totalRemaining = totalTarget - totalSaved;
   const completedGoalsCount = goals.filter(
     (g) => getStatus(g) === "Completed"
@@ -102,6 +120,58 @@ export default function SavingsPage() {
   }, [goals]);
 
   // Handlers
+
+  const handleDeleteTransaction = async (transaction) => {
+    const result = await Swal.fire({
+      title: `Delete this transaction?`,
+      text: "This action cannot be undone.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#EF4444",
+      cancelButtonColor: "#6B7280",
+      confirmButtonText: "Yes, delete it!",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await deleteTransactionMutation.mutateAsync(transaction.id);
+        Swal.fire("Deleted!", "The transaction has been deleted.", "success");
+      } catch (error) {
+        console.log(error);
+        Swal.fire("Error!", "Could not delete transaction.", "error");
+      }
+    }
+  };
+
+  const handleAddSavings = async (contributions) => {
+    try {
+      const contributionData = {
+        goal_id: contributions.goal_id,
+        amount: Number(contributions.amount),
+        date: contributions.date,
+      };
+
+      // 🔥 Use mutation (like you did with addGoalMutation)
+      await addContributionMutation.mutateAsync(contributionData);
+
+      Swal.fire({
+        icon: "success",
+        title: "Savings Added!",
+        text: `₱${Number(
+          savingsAmount
+        ).toLocaleString()} added to your savings goal.`,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: error.message,
+      });
+    }
+  };
+
   const handleEditGoal = async (updatedGoal) => {
     try {
       // ✅ Validation
@@ -161,7 +231,6 @@ export default function SavingsPage() {
         confirmButtonColor: "#10B981",
       });
     } catch (error) {
-      console.error("Update Goal Error:", error);
       Swal.fire({
         icon: "error",
         title: "Oops!",
@@ -214,11 +283,10 @@ export default function SavingsPage() {
     if (!result.isConfirmed) return;
 
     try {
-      await api.delete(`/dashboard/savings/${goalId}`);
-      setGoals((prev) => prev.filter((g) => g.goal_id !== goalId));
+      await deleteGoalMutation.mutateAsync(goalId.goal_id);
       Swal.fire("Deleted!", "Your savings goal has been removed.", "success");
+      setSavingsModalOpen(false);
     } catch (error) {
-      console.error("Error deleting goal:", error);
       Swal.fire("Error", "Failed to delete the goal.", "error");
     }
   };
@@ -271,7 +339,6 @@ export default function SavingsPage() {
         confirmButtonColor: "#10B981",
       });
     } catch (error) {
-      console.error("Error submitting form:", error);
       Swal.fire({
         icon: "error",
         title: "Oops!",
@@ -469,7 +536,7 @@ export default function SavingsPage() {
                   Create your first savings goal to start tracking your progress
                 </p>
                 <button
-                  onClick={handleAddGoal}
+                  onClick={() => handleOpenModal()}
                   className="mt-4 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:shadow-lg transition-all duration-300"
                 >
                   Create Goal
@@ -479,13 +546,19 @@ export default function SavingsPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
               {goals.map((goal, i) => {
-                const remaining =
-                  Number(goal.target_amount) - Number(goal.current_amount);
-                const progress = Math.min(
-                  (Number(goal.current_amount) / Number(goal.target_amount)) *
-                    100,
-                  100
-                );
+                // ✅ sum all contributions for this goal
+                const saved = (
+                  Array.isArray(goal.contributions) ? goal.contributions : []
+                ).reduce((sum, c) => {
+                  const amount = parseFloat(c.amount);
+                  return sum + (isNaN(amount) ? 0 : amount);
+                }, 0);
+
+                const target = parseFloat(goal.target_amount) || 0;
+                const remaining = target - saved;
+                const progress =
+                  target > 0 ? Math.min((saved / target) * 100, 100) : 0;
+
                 const status = getStatus(goal);
                 const isCompleted = status === "Completed";
                 const isBehind = status === "Behind";
@@ -552,7 +625,7 @@ export default function SavingsPage() {
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-600">Saved:</span>
                           <span className="font-semibold text-green-600">
-                            ₱{Number(goal.current_amount).toLocaleString()}
+                            ₱{Number(saved).toLocaleString()}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
@@ -664,9 +737,19 @@ export default function SavingsPage() {
               </thead>
               <tbody>
                 {goals.map((goal) => {
-                  const remaining =
-                    Number(goal.target_amount) - Number(goal.current_amount);
-                  const status = getStatus(goal);
+                  // ✅ sum all contributions for this goal
+                  const saved = (
+                    Array.isArray(goal.contributions) ? goal.contributions : []
+                  ).reduce((sum, c) => {
+                    const amount = parseFloat(c.amount);
+                    return sum + (isNaN(amount) ? 0 : amount);
+                  }, 0);
+
+                  const target = parseFloat(goal.target_amount) || 0;
+                  const remaining = target - saved;
+
+                  // ✅ recalculate status based on contributions
+                  const status = getStatus({ ...goal, current_amount: saved });
                   const isCompleted = status === "Completed";
                   const isBehind = status === "Behind";
 
@@ -685,12 +768,18 @@ export default function SavingsPage() {
                           </p>
                         </div>
                       </td>
+
+                      {/* Target */}
                       <td className="py-4 px-6 font-semibold text-blue-600">
-                        ₱{Number(goal.target_amount).toLocaleString()}
+                        ₱{target.toLocaleString()}
                       </td>
+
+                      {/* Saved (from contributions) */}
                       <td className="py-4 px-6 font-semibold text-green-600">
-                        ₱{Number(goal.current_amount).toLocaleString()}
+                        ₱{saved.toLocaleString()}
                       </td>
+
+                      {/* Remaining */}
                       <td
                         className={`py-4 px-6 font-semibold ${
                           remaining <= 0 ? "text-green-600" : "text-orange-600"
@@ -698,11 +787,15 @@ export default function SavingsPage() {
                       >
                         ₱{Math.max(remaining, 0).toLocaleString()}
                       </td>
+
+                      {/* Deadline */}
                       <td className="py-4 px-6 text-gray-600">
                         {goal.deadline
                           ? new Date(goal.deadline).toLocaleDateString()
                           : "No deadline"}
                       </td>
+
+                      {/* Status */}
                       <td className="py-4 px-6">
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -716,22 +809,15 @@ export default function SavingsPage() {
                           {status}
                         </span>
                       </td>
+
+                      {/* Actions */}
                       <td className="py-4 px-6 text-right">
                         <div className="flex items-center justify-end space-x-2">
-                          <button
-                            className="p-2 text-green-500 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditGoal(goal);
-                            }}
-                          >
-                            <Edit size={16} />
-                          </button>
                           <button
                             className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDeleteGoal(goal.goal_id);
+                              handleDeleteGoal(goal);
                             }}
                           >
                             <Trash2 size={16} />
@@ -895,6 +981,9 @@ export default function SavingsPage() {
           }}
           onEditGoal={handleEditGoal}
           onSave={handleSaveGoal}
+          onAddSavings={handleAddSavings}
+          onDeleteTransaction={handleDeleteTransaction}
+          onDeleteGoal={handleDeleteGoal}
         />
       )}
     </div>

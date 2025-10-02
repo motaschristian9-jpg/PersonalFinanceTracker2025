@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import Swal from "sweetalert2";
 import {
   X,
   DollarSign,
@@ -17,8 +18,8 @@ export default function SavingsCardModal({
   onClose,
   onEditGoal,
   onAddSavings,
-  transactions = [],
-  currentSaved = 0,
+  onDeleteTransaction,
+  onDeleteGoal,
 }) {
   const [localGoal, setLocalGoal] = useState(goal);
   const [targetInput, setTargetInput] = useState(
@@ -70,39 +71,56 @@ export default function SavingsCardModal({
 
   const handleAddSavings = async () => {
     if (!savingsAmount || Number(savingsAmount) <= 0) {
-      alert("Please enter a valid savings amount.");
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid Amount",
+        text: "Please enter a valid savings amount.",
+      });
       return;
     }
 
-    const remainingAmount = Number(goal.target_amount) - currentSaved;
+    const currentSaved = Number(localGoal.contributions.amount);
+
+    const remainingAmount = Number(localGoal.target_amount) - currentSaved;
+
     if (Number(savingsAmount) > remainingAmount) {
-      alert(
-        `You only need ₱${remainingAmount.toLocaleString()} more to reach your goal.`
-      );
+      Swal.fire({
+        icon: "info",
+        title: "Goal Almost Reached",
+        text: `You only need ₱${remainingAmount.toLocaleString()} more to reach your goal.`,
+      });
       return;
     }
 
     if (onAddSavings) {
-      const success = await onAddSavings({
-        goal_id: goal.id || goal.goal_id,
+      const newContribution = {
+        goal_id: goal.goal_id || goal.id,
         amount: Number(savingsAmount),
-        description: "Savings deposit",
-      });
+        date: new Date().toISOString().split("T")[0], // ✅ match `date` column (YYYY-MM-DD)
+      };
+
+      const success = await onAddSavings(newContribution);
 
       if (success !== false) {
         setSavingsAmount("");
-        alert(
-          `₱${Number(
+        Swal.fire({
+          icon: "success",
+          title: "Savings Added!",
+          text: `₱${Number(
             savingsAmount
-          ).toLocaleString()} added to your savings goal.`
-        );
+          ).toLocaleString()} added to your savings goal.`,
+          timer: 2000,
+          showConfirmButton: false,
+        });
       }
     }
   };
 
   const targetAmount = Number(goal.target_amount) || 0;
-  const savedAmount = currentSaved || 0;
-  const remainingAmount = Math.max(0, targetAmount - savedAmount);
+  const savedAmount = Array.isArray(goal.contributions)
+    ? goal.contributions.reduce((total, c) => total + Number(c.amount || 0), 0)
+    : 0;
+  const remainingAmount = targetAmount - savedAmount;
   const progressPercentage =
     targetAmount > 0 ? Math.min((savedAmount / targetAmount) * 100, 100) : 0;
 
@@ -151,7 +169,7 @@ export default function SavingsCardModal({
                 </button>
                 <button
                   className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                  onClick={() => onDeleteBudget(budget)}
+                  onClick={() => onDeleteGoal(localGoal)}
                 >
                   <Trash2 size={16} />
                 </button>
@@ -360,7 +378,7 @@ export default function SavingsCardModal({
                           disabled={
                             !savingsAmount || Number(savingsAmount) <= 0
                           }
-                          className="px-4 sm:px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center space-x-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                          className="px-4 sm:px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center space-x-2 font-medium"
                         >
                           <Plus size={16} />
                           <span>Add Savings</span>
@@ -402,7 +420,7 @@ export default function SavingsCardModal({
                   </h3>
 
                   <div className="flex-1 overflow-y-auto">
-                    {transactions.length === 0 ? (
+                    {localGoal.contributions.length === 0 ? (
                       <div className="text-center py-8">
                         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                           <PiggyBank className="text-gray-400" size={24} />
@@ -416,36 +434,59 @@ export default function SavingsCardModal({
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {transactions.map((tx, index) => (
-                          <div
-                            key={tx.id ?? index}
-                            className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100 hover:shadow-md transition-shadow"
-                          >
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                <TrendingUp
-                                  size={14}
-                                  className="text-green-600"
-                                />
+                        {localGoal.contributions &&
+                        localGoal.contributions.length > 0 ? (
+                          localGoal.contributions.map((contribution, index) => (
+                            <div
+                              key={contribution.id ?? index}
+                              className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100 hover:shadow-md transition-shadow"
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                  <TrendingUp
+                                    size={14}
+                                    className="text-green-600"
+                                  />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-gray-800">
+                                    ₱
+                                    {contribution.amount
+                                      ? Number(
+                                          contribution.amount
+                                        ).toLocaleString()
+                                      : "-"}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {contribution.date
+                                      ? new Date(
+                                          contribution.date
+                                        ).toLocaleDateString()
+                                      : "-"}
+                                  </p>
+                                </div>
                               </div>
-                              <div>
-                                <p className="font-medium text-gray-800">
-                                  ₱
-                                  {tx.amount
-                                    ? Number(tx.amount).toLocaleString()
-                                    : "-"}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {tx.transaction_date
-                                    ? new Date(
-                                        tx.transaction_date
-                                      ).toLocaleDateString()
-                                    : "-"}
-                                </p>
-                              </div>
+
+                              {onDeleteTransaction && (
+                                <button
+                                  className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200"
+                                  onClick={async () => {
+                                    await onDeleteTransaction(contribution);
+                                    setLocalGoal((prev) => ({
+                                      ...prev,
+                                    }));
+                                  }}
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
                             </div>
-                          </div>
-                        ))}
+                          ))
+                        ) : (
+                          <p className="text-sm text-gray-500 text-center py-4">
+                            No contributions yet.
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>

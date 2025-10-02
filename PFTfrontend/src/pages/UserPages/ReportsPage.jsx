@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Progress } from "../../components/ui/progress";
+
 import {
   PieChart,
   Pie,
@@ -28,85 +29,198 @@ import {
   FileText,
   FileDown,
 } from "lucide-react";
+import { Link, useOutletContext } from "react-router-dom";
 
 const ReportsPage = () => {
+  const { user, transactions, budgets, goals, reports } = useOutletContext();
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [appliedRange, setAppliedRange] = useState({ from: "", to: "" });
 
   // Dummy data for charts
-  const expenseData = [
-    { name: "Food", value: 4000 },
-    { name: "Transport", value: 2000 },
-    { name: "Bills", value: 3000 },
-    { name: "Entertainment", value: 1500 },
-  ];
+  const expenseData = React.useMemo(() => {
+    if (!transactions) return [];
 
-  const incomeExpenseData = [
-    { month: "Jan", income: 12000, expenses: 8000 },
-    { month: "Feb", income: 15000, expenses: 10000 },
-    { month: "Mar", income: 14000, expenses: 9000 },
-    { month: "Apr", income: 13000, expenses: 8500 },
-    { month: "May", income: 16000, expenses: 11000 },
-    { month: "Jun", income: 15500, expenses: 9500 },
-  ];
+    const from = appliedRange?.from ? new Date(appliedRange.from) : null;
+    const to = appliedRange?.to ? new Date(appliedRange.to) : null;
 
-  const budgetUtilization = [
-    { category: "Food", allocated: 5000, spent: 3500, percentage: 70 },
-    { category: "Transport", allocated: 4000, spent: 2000, percentage: 50 },
-    { category: "Bills", allocated: 3500, spent: 3150, percentage: 90 },
-    { category: "Entertainment", allocated: 2000, spent: 1200, percentage: 60 },
-  ];
+    return (
+      transactions
+        // ✅ filter by expense type
+        .filter((t) => t.type?.toLowerCase() === "expense")
+        // ✅ filter by applied date range
+        .filter((t) => {
+          const txDate = new Date(t.transaction_date || t.date);
+          if (from && txDate < from) return false;
+          if (to && txDate > to) return false;
+          return true;
+        })
+        // ✅ group by category
+        .reduce((acc, tx) => {
+          const existing = acc.find((item) => item.name === tx.category);
+          if (existing) {
+            existing.value += parseFloat(tx.amount) || 0;
+          } else {
+            acc.push({ name: tx.category, value: parseFloat(tx.amount) || 0 });
+          }
+          return acc;
+        }, [])
+    );
+  }, [transactions, appliedRange]);
 
-  const incomeReports = [
-    { source: "Salary", amount: 15000, date: "2025-09-01", type: "Monthly" },
-    { source: "Freelance", amount: 5000, date: "2025-09-10", type: "Project" },
-    {
-      source: "Investment",
-      amount: 2000,
-      date: "2025-09-15",
-      type: "Dividend",
-    },
-    {
-      source: "Side Business",
-      amount: 3000,
-      date: "2025-09-20",
-      type: "Revenue",
-    },
-  ];
+  const incomeExpenseData = React.useMemo(() => {
+    if (!transactions) return [];
 
-  const expenseReports = [
-    {
-      category: "Food",
-      amount: 4000,
-      date: "2025-09-05",
-      description: "Groceries & Dining",
-    },
-    {
-      category: "Transport",
-      amount: 2000,
-      date: "2025-09-08",
-      description: "Fuel & Commute",
-    },
-    {
-      category: "Bills",
-      amount: 3000,
-      date: "2025-09-12",
-      description: "Utilities & Internet",
-    },
-    {
-      category: "Entertainment",
-      amount: 1500,
-      date: "2025-09-18",
-      description: "Movies & Games",
-    },
-  ];
+    // Prepare a map for totals by month
+    const monthlyTotals = {};
+
+    transactions.forEach((tx) => {
+      const dateStr = tx.transaction_date;
+      if (!dateStr) return;
+
+      const date = new Date(dateStr);
+
+      // ✅ Apply date filter
+      const from = appliedRange?.from ? new Date(appliedRange.from) : null;
+      const to = appliedRange?.to ? new Date(appliedRange.to) : null;
+
+      if (from && date < from) return; // skip before start
+      if (to && date > to) return; // skip after end
+
+      const month = date.toLocaleString("en-US", { month: "short" }); // e.g. "Jan"
+
+      if (!monthlyTotals[month]) {
+        monthlyTotals[month] = { month, income: 0, expenses: 0 };
+      }
+
+      if (tx.type.toLowerCase() === "income") {
+        monthlyTotals[month].income += Number(tx.amount) || 0;
+      } else if (tx.type.toLowerCase() === "expense") {
+        monthlyTotals[month].expenses += Number(tx.amount) || 0;
+      }
+    });
+
+    // Convert map → array sorted by month order
+    const monthOrder = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
+    return monthOrder
+      .map((m) => monthlyTotals[m]) // ensure correct order
+      .filter(Boolean); // remove months with no data
+  }, [transactions, appliedRange]);
+
+  const budgetUtilization = React.useMemo(() => {
+    if (!budgets || !transactions) return [];
+
+    return budgets.map((budget) => {
+      // ✅ Apply date filter
+      const from = appliedRange?.from ? new Date(appliedRange.from) : null;
+      const to = appliedRange?.to ? new Date(appliedRange.to) : null;
+
+      const spent = transactions
+        .filter((tx) => {
+          if (tx.type !== "expense" || tx.budget_id !== budget.budget_id)
+            return false;
+
+          const date = new Date(tx.transaction_date || tx.date); // support both fields
+          if (from && date < from) return false;
+          if (to && date > to) return false;
+
+          return true;
+        })
+        .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+
+      const allocated = Number(budget.amount || 0);
+      const percentage =
+        allocated > 0 ? Math.round((spent / allocated) * 100) : 0;
+
+      return {
+        category: budget.category || "Uncategorized",
+        allocated,
+        spent,
+        percentage,
+      };
+    });
+  }, [budgets, transactions, appliedRange]);
+
+  const incomeReports = React.useMemo(() => {
+    if (!transactions) return [];
+
+    const from = appliedRange?.from ? new Date(appliedRange.from) : null;
+    const to = appliedRange?.to ? new Date(appliedRange.to) : null;
+
+    return transactions
+      .filter((tx) => {
+        if (tx.type !== "income") return false;
+
+        const date = new Date(tx.transaction_date || tx.date);
+        if (from && date < from) return false;
+        if (to && date > to) return false;
+
+        return true;
+      })
+      .map((tx) => ({
+        source: tx.source || tx.category || "Other", // use source if available, else fallback
+        amount: Number(tx.amount || 0),
+        date: tx.transaction_date,
+        type: tx.typeDetail || "Income", // optional if you have sub-types
+      }));
+  }, [transactions, appliedRange]);
+
+  const expenseReports = React.useMemo(() => {
+    if (!transactions) return [];
+
+    const from = appliedRange?.from ? new Date(appliedRange.from) : null;
+    const to = appliedRange?.to ? new Date(appliedRange.to) : null;
+
+    return transactions
+      .filter((tx) => {
+        if (tx.type !== "expense") return false;
+
+        const date = new Date(tx.transaction_date || tx.date);
+        if (from && date < from) return false;
+        if (to && date > to) return false;
+
+        return true;
+      })
+      .map((tx) => ({
+        category: tx.category || "Uncategorized",
+        amount: Number(tx.amount || 0),
+        date: tx.transaction_date,
+        description: tx.description || "No description",
+      }));
+  }, [transactions, appliedRange]);
 
   const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6"];
+  const handleApplyFilter = () => {
+    setAppliedRange({ from: dateFrom, to: dateTo });
+  };
 
   const handleExport = (type) => {
     // Export functionality would go here
     console.log(`Exporting ${type}...`);
   };
+
+  const totalSaved = goals.reduce((sum, g) => {
+    const goalContributions = g.contributions ?? [];
+    const goalTotal = goalContributions.reduce(
+      (s, c) => s + Number(c.amount || 0),
+      0
+    );
+    return sum + goalTotal;
+  }, 0);
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 p-4 sm:p-6 lg:p-0">
@@ -165,7 +279,10 @@ const ReportsPage = () => {
                   className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-300 text-sm"
                 />
               </div>
-              <button className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:shadow-lg transition-all duration-300 text-sm">
+              <button
+                onClick={handleApplyFilter}
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:shadow-lg transition-all duration-300 text-sm"
+              >
                 Apply Filter
               </button>
             </div>
@@ -187,7 +304,7 @@ const ReportsPage = () => {
                   Total Income
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-green-600">
-                  ₱42,000
+                  ₱{Number(reports?.totalIncome || 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -206,7 +323,7 @@ const ReportsPage = () => {
                   Total Expenses
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-red-600">
-                  ₱28,500
+                  ₱{Number(reports?.totalExpenses || 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -225,7 +342,7 @@ const ReportsPage = () => {
                   Net Balance
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-blue-600">
-                  ₱13,500
+                  ₱{Number(reports?.balance || 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -244,7 +361,7 @@ const ReportsPage = () => {
                   Savings Achieved
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-purple-600">
-                  ₱8,000
+                  ₱{Number(totalSaved || 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -401,13 +518,13 @@ const ReportsPage = () => {
                 <thead className="bg-green-50/50">
                   <tr>
                     <th className="py-3 px-4 font-semibold text-gray-700 text-sm">
-                      Source
+                      Category
                     </th>
                     <th className="py-3 px-4 font-semibold text-gray-700 text-sm">
                       Amount
                     </th>
                     <th className="py-3 px-4 font-semibold text-gray-700 text-sm hidden sm:table-cell">
-                      Type
+                      Description
                     </th>
                     <th className="py-3 px-4 font-semibold text-gray-700 text-sm">
                       Date
@@ -428,10 +545,8 @@ const ReportsPage = () => {
                       <td className="py-3 px-4 font-semibold text-green-600">
                         ₱{item.amount.toLocaleString()}
                       </td>
-                      <td className="py-3 px-4 hidden sm:table-cell">
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          {item.type}
-                        </span>
+                      <td className="py-3 px-4 text-gray-600 text-sm hidden sm:table-cell">
+                        {item.description || "—"}
                       </td>
                       <td className="py-3 px-4 text-gray-600 text-sm">
                         {new Date(item.date).toLocaleDateString()}

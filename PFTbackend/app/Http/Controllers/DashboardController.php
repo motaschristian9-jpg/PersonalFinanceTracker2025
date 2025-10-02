@@ -362,6 +362,7 @@ class DashboardController extends Controller
     {
         $userId = $request->user()->id;
 
+        // Transactions
         $totalIncome = Transaction::where('user_id', $userId)
             ->where('type', 'Income')
             ->sum('amount');
@@ -372,15 +373,27 @@ class DashboardController extends Controller
 
         $balance = $totalIncome - $totalExpenses;
 
-        $totalSaved = 0;
+        // Savings
         $totalTarget = SavingsGoal::where('user_id', $userId)->sum('target_amount');
-        $savingsProgress = $totalTarget > 0 ? round(($totalSaved / $totalTarget) * 100) : 0;
+
+        // ✅ Sum all contributions across all goals for this user
+        $totalSaved = SavingsContribution::whereHas('goal', function ($query) use ($userId) {
+            $query->where('user_id', $userId);
+        })->sum('amount');
+
+        // Progress (% of savings achieved)
+        $savingsProgress = $totalTarget > 0
+            ? round(($totalSaved / $totalTarget) * 100)
+            : 0;
 
         return response()->json([
             'totalIncome' => $totalIncome,
             'totalExpenses' => $totalExpenses,
             'balance' => $balance,
+            'totalSaved' => $totalSaved,
+            'totalTarget' => $totalTarget,
             'savingsProgress' => $savingsProgress,
         ]);
     }
+
 }

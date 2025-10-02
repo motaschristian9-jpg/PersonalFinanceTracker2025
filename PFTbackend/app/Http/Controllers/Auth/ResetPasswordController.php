@@ -15,8 +15,8 @@ class ResetPasswordController extends Controller
     {
         // Validate inputs
         $request->validate([
-            'email'    => 'required|email|exists:users,email',
-            'token'    => 'required',
+            'email' => 'required|email|exists:users,email',
+            'token' => 'required',
             'password' => 'required|min:8|confirmed',
         ]);
 
@@ -49,6 +49,32 @@ class ResetPasswordController extends Controller
 
         return response()->json([
             'message' => '✅ Password has been reset successfully!'
+        ], 200);
+    }
+
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required',
+            'new_password' => 'required|min:8|confirmed',
+        ]);
+
+        $user = auth()->user();
+
+        // Check current password
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'message' => '❌ Current password is incorrect.'
+            ], 400);
+        }
+
+        // Update to new password
+        $user->update([
+            'password' => Hash::make($request->new_password),
+        ]);
+
+        return response()->json([
+            'message' => '✅ Password changed successfully!'
         ], 200);
     }
 }

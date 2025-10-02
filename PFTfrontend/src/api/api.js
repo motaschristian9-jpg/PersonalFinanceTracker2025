@@ -122,7 +122,21 @@ export const deleteBudget = (id) => api.delete(`/dashboard/budgets/${id}`);
 
 export const deleteGoal = (id) => api.delete(`/dashboard/savings-goals/${id}`);
 
-export const deleteContribution = (id) => api.delete(`/dashboard/contributions/${id}`)
+export const deleteContribution = (id) =>
+  api.delete(`/dashboard/contributions/${id}`);
 // --- Reports Data ---
 
 export const generateReport = (data) => api.post("/dashboard/reports", data);
+
+export const changePassword = (passwordData) =>
+  api.post("user/change-password", {
+    current_password: passwordData.current_password,
+    new_password: passwordData.new_password,
+    new_password_confirmation: passwordData.new_password_confirmation,
+  });
+
+export const updateProfile = (userId, profileData) =>
+  api.put(`user/${userId}`, {
+    fullName: profileData.fullName,
+    email: profileData.email,
+  });

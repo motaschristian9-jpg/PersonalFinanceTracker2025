@@ -151,4 +151,21 @@ class AuthController extends Controller
             'user' => $user
         ]);
     }
+
+    public function updateProfile(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        $request->validate([
+            'fullName' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+        ]);
+
+        $user->update([
+            'name' => $request->fullName,
+            'email' => $request->email,
+        ]);
+
+        return response()->json($user, 200);
+    }
 }

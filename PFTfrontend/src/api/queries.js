@@ -17,6 +17,8 @@ import {
   deleteGoal,
   deleteContribution,
   addExpenseToBudget, // <- import new API function
+  changePassword,
+  updateProfile,
 } from "./api";
 
 // ------------------ HELPER ------------------
@@ -485,6 +487,75 @@ export const useDeleteGoal = () => {
     onSettled: () => {
       // Refetch to ensure consistency
       queryClient.invalidateQueries(["goals"]);
+    },
+  });
+};
+
+export const useChangePassword = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: changePassword,
+
+    onMutate: async (passwordData) => {
+      // Cancel queries if needed
+      await queryClient.cancelQueries(["user"]);
+
+      const previousUser = queryClient.getQueryData(["user"]);
+
+      // Optimistic update: mark user as "updating password"
+      if (previousUser) {
+        queryClient.setQueryData(["user"], {
+          ...previousUser,
+          updatingPassword: true,
+        });
+      }
+
+      return { previousUser };
+    },
+
+    onError: (err, passwordData, context) => {
+      if (context?.previousUser) {
+        queryClient.setQueryData(["user"], context.previousUser);
+      }
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries(["user"]);
+    },
+  });
+};
+
+export const useUpdateProfile = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ userId, profileData }) => updateProfile(userId, profileData),
+
+    // Optional: Optimistic update
+    onMutate: async ({ userId, profileData }) => {
+      await queryClient.cancelQueries(["user", userId]);
+      const previousUser = queryClient.getQueryData(["user", userId]);
+
+      queryClient.setQueryData(["user", userId], (old) => ({
+        ...old,
+        ...profileData,
+      }));
+
+      return { previousUser };
+    },
+
+    onError: (err, variables, context) => {
+      if (context?.previousUser) {
+        queryClient.setQueryData(
+          ["user", variables.userId],
+          context.previousUser
+        );
+      }
+    },
+
+    onSettled: (data, error, variables) => {
+      queryClient.invalidateQueries(["user", variables.userId]);
     },
   });
 };

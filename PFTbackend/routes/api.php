@@ -26,6 +26,9 @@ Route::middleware([JWTMiddleware::class])->group(function () {
     Route::get('profile', [AuthController::class, 'profile']);
     Route::post('logout', [AuthController::class, 'logout']);
 
+    Route::post('user/change-password', [ResetPasswordController::class, 'changePassword']);
+    Route::put('user/{id}', [AuthController::class, 'updateProfile']);
+
     // Dashboard
     Route::prefix('dashboard')->group(function () {
         // Transactions
@@ -48,9 +51,13 @@ Route::middleware([JWTMiddleware::class])->group(function () {
         Route::put('savings-goals/{id}', [DashboardController::class, 'updateGoal']);
         Route::delete('savings-goals/{id}', [DashboardController::class, 'deleteGoal']);
 
-        Route::post('goals/{id}/add-contribution', [DashboardController::class, 'addContribution']
+        Route::post(
+            'goals/{id}/add-contribution',
+            [DashboardController::class, 'addContribution']
         );
-        Route::delete('contributions/{id}', [DashboardController::class, 'deleteContribution']
+        Route::delete(
+            'contributions/{id}',
+            [DashboardController::class, 'deleteContribution']
         );
 
         // Reports

@@ -655,7 +655,7 @@ export default function Dashboard() {
                 if (percentSpent >= 100)
                   notifications.push({
                     id: `budget-${b.budget_id}-over`,
-                    message: `⚠️ You have overspent your ${b.category} budget!`,
+                    message: `⚠️ You have spent your ${b.category} budget!`,
                     type: "error",
                   });
                 else if (percentSpent >= 80)

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Link, useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -33,12 +33,19 @@ export default function UserLayout() {
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [hasUnread, setHasUnread] = useState(false);
   const dropdownRef = useRef(null);
   const notificationRef = useRef(null);
 
   const navigate = useNavigate();
   const location = useLocation();
+
+  const handleBellClick = () => {
+    setNotificationOpen(!notificationOpen);
+    if (!notificationOpen) setHasUnread(false); // Mark as read
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -110,59 +117,78 @@ export default function UserLayout() {
     reportsLoading;
 
   // --- Generate notifications ---
-  const generateNotifications = () => {
+  // ✅ Notification Generator
+  const generatedNotifications = useMemo(() => {
+    if (!budgets || !goals || !transactions) return [];
     const notifications = [];
 
-    if (budgets && budgets.length > 0) {
-      budgets.forEach((b) => {
-        const percentSpent = (b.spent / b.limit) * 100;
-        if (percentSpent >= 100)
-          notifications.push({
-            id: `budget-${b.id}-over`,
-            message: `⚠️ You have overspent your ${b.category} budget!`,
-            type: "error",
-          });
-        else if (percentSpent >= 80)
-          notifications.push({
-            id: `budget-${b.id}-warn`,
-            message: `⚠️ You have used ${Math.floor(percentSpent)}% of your ${
-              b.category
-            } budget.`,
-            type: "warning",
-          });
-      });
-    }
+    // --- Budgets ---
+    budgets.forEach((b) => {
+      const spent = transactions
+        .filter((t) => t.budget_id === b.budget_id)
+        .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+      const percent = b.amount > 0 ? (spent / b.amount) * 100 : 0;
 
-    if (goals && goals.length > 0) {
-      goals.forEach((g) => {
-        const progress = (g.current_amount / g.target_amount) * 100;
-        if (progress >= 100)
-          notifications.push({
-            id: `goal-${g.goal_id}-complete`,
-            message: `🎉 You've reached your savings goal: ${g.title}!`,
-            type: "success",
-          });
-        else if (progress >= 80)
-          notifications.push({
-            id: `goal-${g.goal_id}-high`,
-            message: `🎯 You're ${Math.floor(progress)}% of the way to ${
-              g.title
-            }. Almost there!`,
-            type: "info",
-          });
-        else if (progress >= 50)
-          notifications.push({
-            id: `goal-${g.goal_id}-mid`,
-            message: `🎯 You've reached 50% of ${g.title}. Keep going!`,
-            type: "info",
-          });
-      });
-    }
+      if (percent >= 100)
+        notifications.push({
+          id: `budget-${b.budget_id}-over`,
+          message: `⚠️ You have overspent your ${b.category} budget!`,
+          type: "error",
+        });
+      else if (percent >= 80)
+        notifications.push({
+          id: `budget-${b.budget_id}-warn`,
+          message: `⚠️ You have used ${Math.floor(percent)}% of your ${
+            b.category
+          } budget.`,
+          type: "warning",
+        });
+    });
+
+    // --- Goals ---
+    goals.forEach((g) => {
+      const current = Array.isArray(g.contributions)
+        ? g.contributions.reduce((sum, c) => sum + Number(c.amount || 0), 0)
+        : 0;
+      const progress =
+        g.target_amount > 0 ? (current / g.target_amount) * 100 : 0;
+
+      if (progress >= 100)
+        notifications.push({
+          id: `goal-${g.goal_id}-complete`,
+          message: `🎉 You've reached your savings goal: ${g.title}!`,
+          type: "success",
+        });
+      else if (progress >= 80)
+        notifications.push({
+          id: `goal-${g.goal_id}-high`,
+          message: `🎯 You're ${Math.floor(progress)}% of the way to ${
+            g.title
+          }. Almost there!`,
+          type: "info",
+        });
+      else if (progress >= 50)
+        notifications.push({
+          id: `goal-${g.goal_id}-mid`,
+          message: `🎯 You've reached 50% of ${g.title}. Keep going!`,
+          type: "info",
+        });
+    });
 
     return notifications;
-  };
+  }, [budgets, goals, transactions]);
 
-  const notifications = generateNotifications();
+  useEffect(() => {
+    const hasChanged =
+      generatedNotifications.length !== notifications.length ||
+      JSON.stringify(generatedNotifications) !== JSON.stringify(notifications);
+
+    if (hasChanged) {
+      setNotifications(generatedNotifications);
+      setHasUnread(generatedNotifications.length > 0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generatedNotifications]);
 
   // --- Menu items ---
   const menuItems = [
@@ -387,12 +413,12 @@ export default function UserLayout() {
               {/* Notifications Dropdown */}
               <div className="relative" ref={notificationRef}>
                 <button
-                  onClick={() => setNotificationOpen(!notificationOpen)}
+                  onClick={handleBellClick}
                   className="p-2 rounded-lg hover:bg-green-50 transition-colors duration-200 text-gray-600 hover:text-green-600 relative"
                 >
                   <Bell size={20} />
-                  {/* Notification badge */}
-                  {notifications.length > 0 && (
+                  {/* 🔴 Red dot appears when unread */}
+                  {hasUnread && (
                     <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
                   )}
                 </button>
@@ -439,7 +465,7 @@ export default function UserLayout() {
                 )}
               </div>
 
-              {/* Profile Dropdown */}
+              {/* Profile Dropdown (unchanged) */}
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}

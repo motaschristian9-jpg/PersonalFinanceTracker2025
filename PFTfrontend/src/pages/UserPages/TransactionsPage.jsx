@@ -22,11 +22,11 @@ import {
   useAddTransaction,
   useDeleteTransaction,
   useUpdateTransaction,
+  useTransactions,
 } from "../../api/queries";
-import { useOutletContext } from "react-router-dom";
 
 export default function Transactions() {
-  const { transactions } = useOutletContext();
+  const { data: transactions } = useTransactions();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState("");
@@ -80,7 +80,7 @@ export default function Transactions() {
   const handleSubmit = async (payload) => {
     try {
       const txData = {
-        type: modalType === "income" ? "Income" : "Expense",
+        type: modalType === "income" ? "income" : "expense",
         category: payload.category,
         amount: Number(payload.amount),
         transaction_date: payload.transaction_date,
@@ -88,7 +88,7 @@ export default function Transactions() {
       };
 
       if (editingId) {
-        await updateTransactionMutation.mutateAsync({
+        await updateTransactionMutation.mutate({
           id: editingId,
           data: txData,
         });
@@ -100,7 +100,7 @@ export default function Transactions() {
           confirmButtonColor: "#10B981",
         });
       } else {
-        await addTransactionMutation.mutateAsync(txData);
+        await addTransactionMutation.mutate(txData);
 
         Swal.fire({
           icon: "success",
@@ -380,7 +380,7 @@ export default function Transactions() {
                     </tr>
                   ) : (
                     filteredTransactions.map((tx) => {
-                      const txId = tx.id || tx._id || tx.transaction_id;
+                      const txId = tx.transaction_id;
                       return (
                         <tr
                           key={txId}

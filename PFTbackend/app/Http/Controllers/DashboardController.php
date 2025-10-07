@@ -64,7 +64,7 @@ class DashboardController extends Controller
             'category' => $request->category,
             'amount' => $request->amount,
             'transaction_date' => $request->transaction_date,
-            'description' => $request->description,
+            'description' => $request->description ?? '',
         ]);
 
         return response()->json([

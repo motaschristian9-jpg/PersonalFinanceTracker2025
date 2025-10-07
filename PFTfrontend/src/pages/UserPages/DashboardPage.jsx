@@ -1,6 +1,6 @@
 import Swal from "sweetalert2";
 import { useState } from "react";
-import { Link, useOutletContext } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   PlusCircle,
   MinusCircle,
@@ -29,17 +29,35 @@ import {
 
 import ModalForm from "../../components/ModalForm";
 import SavingsCardModal from "../../components/SavingsCardModal";
-import { useAddTransaction, useAddGoal, useAddBudget } from "../../api/queries";
-import { addTransaction, addBudget } from "../../api/api";
+import {
+  useAddTransaction,
+  useAddGoal,
+  useAddBudget,
+  useProfile,
+  useTransactions,
+  useBudgets,
+  useGoals,
+  useReports,
+} from "../../api/queries";
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
-  const { user, transactions, budgets, goals, reports } = useOutletContext();
+
+  const { data: user } = useProfile();
+
+  const { data: transactions } = useTransactions();
+
+  const { data: budgets } = useBudgets();
+
+  const { data: goals } = useGoals();
+
+  const { data: reports } = useReports();
 
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState("");
   const [formData, setFormData] = useState({});
+  console.log(goals);
 
   // Savings goal modal states (only for viewing existing goals)
   const [savingsModalOpen, setSavingsModalOpen] = useState(false);
@@ -110,7 +128,6 @@ export default function Dashboard() {
 
         await addTransactionMutation.mutateAsync(txData);
         message = modalType === "income" ? "Income added!" : "Expense added!";
-
       } else if (modalType === "budget") {
         const budgetData = {
           category: data.category,
@@ -122,7 +139,6 @@ export default function Dashboard() {
 
         await addBudgetMutation.mutateAsync(budgetData);
         message = "Budget set!";
-
       } else if (modalType === "goal") {
         const goalData = {
           title: data.title,
@@ -501,38 +517,49 @@ export default function Dashboard() {
                   <p>No goals yet.</p>
                 </div>
               ) : (
-                goals.map((g, index) => (
-                  <div
-                    key={g.goal_id || `goal-${index}`}
-                    className="space-y-2 cursor-pointer hover:bg-purple-50/50 p-3 rounded-lg transition-colors"
-                    onClick={() => handleViewGoal(g)}
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-800">
-                        {g.title}
-                      </span>
-                      <span className="text-sm font-medium text-purple-600">
-                        {Math.round((g.current_amount / g.target_amount) * 100)}
-                        %
-                      </span>
+                goals.map((g, index) => {
+                  // ✅ Compute total contributions as current amount
+                  const currentAmount = Array.isArray(g.contributions)
+                    ? g.contributions.reduce(
+                        (sum, c) => sum + Number(c.amount || 0),
+                        0
+                      )
+                    : 0;
+
+                  // ✅ Compute progress percentage safely
+                  const progress =
+                    g.target_amount > 0
+                      ? Math.round((currentAmount / g.target_amount) * 100)
+                      : 0;
+
+                  return (
+                    <div
+                      key={g.goal_id || `goal-${index}`}
+                      className="space-y-2 hover:bg-purple-50/50 p-3 rounded-lg transition-colors"
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-gray-800">
+                          {g.title}
+                        </span>
+                        <span className="text-sm font-medium text-purple-600">
+                          {progress}%
+                        </span>
+                      </div>
+
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div
+                          className="bg-gradient-to-r from-purple-500 to-purple-600 h-3 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(progress, 100)}%` }}
+                        ></div>
+                      </div>
+
+                      <p className="text-sm text-gray-600">
+                        ₱{currentAmount.toFixed(2)} of ₱
+                        {Number(g.target_amount || 0).toFixed(2)}
+                      </p>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div
-                        className="bg-gradient-to-r from-purple-500 to-purple-600 h-3 rounded-full transition-all duration-500"
-                        style={{
-                          width: `${Math.min(
-                            (g.current_amount / g.target_amount) * 100,
-                            100
-                          )}%`,
-                        }}
-                      ></div>
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      ₱{Number(g.current_amount || 0).toFixed(2)} of ₱
-                      {Number(g.target_amount || 0).toFixed(2)}
-                    </p>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
@@ -544,7 +571,7 @@ export default function Dashboard() {
             <h3 className="text-xl font-semibold text-gray-800 mb-6">
               Budget Categories
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {budgets.length === 0 ? (
                 <div className="text-center text-gray-500 py-8">
                   <PieChart className="text-gray-300 mx-auto mb-3" size={48} />
@@ -553,22 +580,48 @@ export default function Dashboard() {
               ) : (
                 budgets.map((b, index) => {
                   const spent = budgetSpent(b.budget_id); // 👈 calculate spent for this budget
+                  const percentage =
+                    b.amount > 0 ? Math.min((spent / b.amount) * 100, 100) : 0;
+
                   return (
                     <div
                       key={b.id || `budget-${index}`}
-                      className="flex justify-between items-center p-3 bg-blue-50/50 rounded-lg"
+                      className="space-y-2 hover:bg-blue-50/50 p-3 rounded-lg transition-colors"
                     >
-                      <span className="font-medium text-gray-800">
-                        {b.category}
-                      </span>
-                      <div className="text-right">
-                        <div className="text-sm font-bold text-blue-600">
-                          ₱{b.amount}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          Spent: ₱{spent}
-                        </div>
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-gray-800">
+                          {b.category}
+                        </span>
+                        <span
+                          className={`text-sm font-medium ${
+                            percentage >= 100
+                              ? "text-red-500"
+                              : percentage >= 75
+                              ? "text-orange-500"
+                              : "text-blue-600"
+                          }`}
+                        >
+                          {Math.round(percentage)}%
+                        </span>
                       </div>
+
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div
+                          className={`h-3 rounded-full transition-all duration-500 ${
+                            percentage >= 100
+                              ? "bg-gradient-to-r from-red-500 to-red-600"
+                              : percentage >= 75
+                              ? "bg-gradient-to-r from-orange-400 to-orange-500"
+                              : "bg-gradient-to-r from-blue-500 to-blue-600"
+                          }`}
+                          style={{ width: `${percentage}%` }}
+                        ></div>
+                      </div>
+
+                      <p className="text-sm text-gray-600">
+                        ₱{Number(spent || 0).toFixed(2)} of ₱
+                        {Number(b.amount || 0).toFixed(2)} spent
+                      </p>
                     </div>
                   );
                 })
@@ -589,17 +642,25 @@ export default function Dashboard() {
             {(() => {
               const notifications = [];
 
+              // ✅ Budget notifications
               budgets.forEach((b) => {
-                const percentSpent = (b.spent / b.limit) * 100;
+                // Calculate total spent based on matching transactions
+                const spent = transactions
+                  .filter((t) => t.budget_id === b.budget_id)
+                  .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+                const percentSpent =
+                  b.amount > 0 ? (spent / b.amount) * 100 : 0;
+
                 if (percentSpent >= 100)
                   notifications.push({
-                    id: `budget-${b.id}-over`,
+                    id: `budget-${b.budget_id}-over`,
                     message: `⚠️ You have overspent your ${b.category} budget!`,
                     type: "error",
                   });
                 else if (percentSpent >= 80)
                   notifications.push({
-                    id: `budget-${b.id}-warn`,
+                    id: `budget-${b.budget_id}-warn`,
                     message: `⚠️ You have used ${Math.floor(
                       percentSpent
                     )}% of your ${b.category} budget.`,
@@ -607,8 +668,20 @@ export default function Dashboard() {
                   });
               });
 
+              // ✅ Savings goal notifications
               goals.forEach((g) => {
-                const progress = (g.current_amount / g.target_amount) * 100;
+                const currentAmount = Array.isArray(g.contributions)
+                  ? g.contributions.reduce(
+                      (sum, c) => sum + Number(c.amount || 0),
+                      0
+                    )
+                  : 0;
+
+                const progress =
+                  g.target_amount > 0
+                    ? (currentAmount / g.target_amount) * 100
+                    : 0;
+
                 if (progress >= 100)
                   notifications.push({
                     id: `goal-${g.goal_id}-complete`,
@@ -631,6 +704,7 @@ export default function Dashboard() {
                   });
               });
 
+              // ✅ No notifications fallback
               if (notifications.length === 0) {
                 return (
                   <div className="text-center text-gray-500 py-4">
@@ -644,6 +718,7 @@ export default function Dashboard() {
                 );
               }
 
+              // ✅ Render notifications
               return notifications.map((n) => (
                 <div
                   key={n.id}

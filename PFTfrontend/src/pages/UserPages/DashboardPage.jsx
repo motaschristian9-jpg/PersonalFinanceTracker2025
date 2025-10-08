@@ -40,6 +40,8 @@ import {
   useReports,
 } from "../../api/queries";
 
+import { useCurrency } from "../../context/CurrencyContext";
+
 export default function Dashboard() {
   const queryClient = useQueryClient();
 
@@ -57,7 +59,8 @@ export default function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState("");
   const [formData, setFormData] = useState({});
-  console.log(goals);
+  const { symbol } = useCurrency();
+
 
   // Savings goal modal states (only for viewing existing goals)
   const [savingsModalOpen, setSavingsModalOpen] = useState(false);
@@ -243,7 +246,7 @@ export default function Dashboard() {
                   Total Income
                 </h3>
                 <p className="text-2xl font-bold text-green-600">
-                  ₱{Number(reports?.totalIncome || 0).toFixed(2)}
+                  {symbol}{Number(reports?.totalIncome || 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -262,7 +265,7 @@ export default function Dashboard() {
                   Total Expenses
                 </h3>
                 <p className="text-2xl font-bold text-red-500">
-                  ₱{Number(reports?.totalExpenses || 0).toFixed(2)}
+                  {symbol}{Number(reports?.totalExpenses || 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -281,7 +284,7 @@ export default function Dashboard() {
                   Net Savings
                 </h3>
                 <p className="text-2xl font-bold text-gray-800">
-                  ₱{Number(reports?.balance || 0).toFixed(2)}
+                  {symbol}{Number(reports?.balance || 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -471,7 +474,7 @@ export default function Dashboard() {
                       </td>
                       <td className="py-3 font-medium">{tx.category}</td>
                       <td className="py-3 font-bold">
-                        ₱{Number(tx.amount).toFixed(2)}
+                        {symbol}{Number(tx.amount).toFixed(2)}
                       </td>
                       <td className="py-3">
                         <span
@@ -554,7 +557,7 @@ export default function Dashboard() {
                       </div>
 
                       <p className="text-sm text-gray-600">
-                        ₱{currentAmount.toFixed(2)} of ₱
+                        {symbol}{currentAmount.toFixed(2)} of {symbol}
                         {Number(g.target_amount || 0).toFixed(2)}
                       </p>
                     </div>
@@ -619,7 +622,7 @@ export default function Dashboard() {
                       </div>
 
                       <p className="text-sm text-gray-600">
-                        ₱{Number(spent || 0).toFixed(2)} of ₱
+                        {symbol}{Number(spent || 0).toFixed(2)} of {symbol}
                         {Number(b.amount || 0).toFixed(2)} spent
                       </p>
                     </div>

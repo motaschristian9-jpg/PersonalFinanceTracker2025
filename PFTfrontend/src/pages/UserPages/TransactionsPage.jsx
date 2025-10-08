@@ -25,6 +25,8 @@ import {
   useTransactions,
 } from "../../api/queries";
 
+import { useCurrency } from "../../context/CurrencyContext";
+
 export default function Transactions() {
   const { data: transactions } = useTransactions();
 
@@ -34,6 +36,7 @@ export default function Transactions() {
   const [editingId, setEditingId] = useState(null);
   const [filterType, setFilterType] = useState("all");
   const [searchText, setSearchText] = useState("");
+  const { symbol } = useCurrency();
 
   // ================= Mutations =================
   const addTransactionMutation = useAddTransaction();
@@ -226,7 +229,7 @@ export default function Transactions() {
                   Total Income
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-green-600">
-                  ₱{totalIncome.toLocaleString()}
+                  {symbol}{totalIncome.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -245,7 +248,7 @@ export default function Transactions() {
                   Total Expenses
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-red-500">
-                  ₱{totalExpenses.toLocaleString()}
+                  {symbol}{totalExpenses.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -268,7 +271,7 @@ export default function Transactions() {
                     netBalance >= 0 ? "text-green-600" : "text-red-500"
                   }`}
                 >
-                  ₱{netBalance.toLocaleString()}
+                  {symbol}{netBalance.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -418,7 +421,7 @@ export default function Transactions() {
                                 {tx.type?.toLowerCase() === "income"
                                   ? "+"
                                   : "-"}{" "}
-                                ₱{Number(tx.amount || 0).toLocaleString()}
+                                {symbol}{Number(tx.amount || 0).toLocaleString()}
                               </span>
                             </div>
                           </td>
@@ -562,7 +565,7 @@ export default function Transactions() {
                                   : "text-red-500"
                               }`}
                             >
-                              {tx.type?.toLowerCase() === "income" ? "+" : "-"}₱
+                              {tx.type?.toLowerCase() === "income" ? "+" : "-"}{symbol}
                               {Number(tx.amount || 0).toLocaleString()}
                             </div>
                           </div>

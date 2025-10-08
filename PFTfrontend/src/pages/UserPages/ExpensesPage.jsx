@@ -29,9 +29,12 @@ import {
 } from "../../api/api";
 import { useAddTransaction, useDeleteTransaction, useUpdateTransaction } from "../../api/queries";
 
+import { useCurrency } from "../../context/CurrencyContext"; // ✅ Import context hook
+
 export default function ExpensesPage() {
   const queryClient = useQueryClient();
   const { user, transactions, budgets, goals, reports } = useOutletContext();
+  const { symbol } = useCurrency(); // ✅ Get currency symbol from context
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -229,7 +232,7 @@ export default function ExpensesPage() {
                   Total Expenses
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-red-600">
-                  ₱{totalExpenses.toLocaleString()}
+                  {symbol}{totalExpenses.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -267,7 +270,7 @@ export default function ExpensesPage() {
                   Avg. Monthly
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-purple-600">
-                  ₱{avgMonthlyExpenses.toFixed(2).toLocaleString()}
+                  {symbol}{avgMonthlyExpenses.toFixed(2).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -450,7 +453,7 @@ export default function ExpensesPage() {
                         <td className="py-4 px-6 font-bold text-red-600">
                           <div className="flex items-center space-x-1">
                             <TrendingDown size={16} />
-                            <span>-₱{Number(tx.amount).toLocaleString()}</span>
+                            <span>-{symbol}{Number(tx.amount).toLocaleString()}</span>
                           </div>
                         </td>
                         <td className="py-4 px-6 text-right">
@@ -547,7 +550,7 @@ export default function ExpensesPage() {
                             </span>
                           </div>
                           <div className="text-lg font-bold text-red-600">
-                            -₱{Number(tx.amount).toLocaleString()}
+                            -{symbol}{Number(tx.amount).toLocaleString()}
                           </div>
                         </div>
                       </div>

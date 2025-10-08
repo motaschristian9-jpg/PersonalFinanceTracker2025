@@ -42,6 +42,8 @@ import {
   useUpdateBudget,
 } from "../../api/queries";
 
+import { useCurrency } from "../../context/CurrencyContext";
+
 export default function BudgetsPage() {
   const { transactions, budgets } = useOutletContext();
 
@@ -54,6 +56,7 @@ export default function BudgetsPage() {
 
   const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6"];
   const MAX_BUDGETS = 9;
+  const { symbol } = useCurrency();
 
   const safeNumber = (n) => (typeof n === "number" ? n : 0);
 
@@ -131,7 +134,7 @@ export default function BudgetsPage() {
       Swal.fire({
         icon: "error",
         title: "Exceeded Budget",
-        text: `You only have ₱${remaining.toLocaleString()} remaining in this budget.`,
+        text: `You only have ${symbol}${remaining.toLocaleString()} remaining in this budget.`,
         confirmButtonColor: "#EF4444",
       });
       return false;
@@ -331,7 +334,7 @@ export default function BudgetsPage() {
                   Total Allocated
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-blue-600">
-                  ₱{totalAllocated.toLocaleString()}
+                  {symbol}{totalAllocated.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -350,7 +353,7 @@ export default function BudgetsPage() {
                   Total Spent
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-red-600">
-                  ₱{totalSpent.toLocaleString()}
+                  {symbol}{totalSpent.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -373,7 +376,7 @@ export default function BudgetsPage() {
                     totalRemaining >= 0 ? "text-green-600" : "text-red-600"
                   }`}
                 >
-                  ₱{totalRemaining.toLocaleString()}
+                  {symbol}{totalRemaining.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -503,13 +506,13 @@ export default function BudgetsPage() {
                             Allocated:
                           </span>
                           <span className="font-semibold text-blue-600">
-                            ₱{allocated.toLocaleString()}
+                            {symbol}{allocated.toLocaleString()}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-600">Spent:</span>
                           <span className="font-semibold text-red-600">
-                            ₱{spent.toLocaleString()}
+                            {symbol}{spent.toLocaleString()}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
@@ -521,7 +524,7 @@ export default function BudgetsPage() {
                               isOverBudget ? "text-red-600" : "text-green-600"
                             }`}
                           >
-                            ₱{remaining.toLocaleString()}
+                            {symbol}{remaining.toLocaleString()}
                           </span>
                         </div>
                       </div>
@@ -630,17 +633,17 @@ export default function BudgetsPage() {
                         </div>
                       </td>
                       <td className="py-4 px-6 font-semibold text-blue-600">
-                        ₱{allocated.toLocaleString()}
+                        {symbol}{allocated.toLocaleString()}
                       </td>
                       <td className="py-4 px-6 font-semibold text-red-600">
-                        ₱{spent.toLocaleString()}
+                        {symbol}{spent.toLocaleString()}
                       </td>
                       <td
                         className={`py-4 px-6 font-semibold ${
                           isOverBudget ? "text-red-600" : "text-green-600"
                         }`}
                       >
-                        ₱{remaining.toLocaleString()}
+                        {symbol}{remaining.toLocaleString()}
                       </td>
                       <td className="py-4 px-6">
                         <span
@@ -707,7 +710,7 @@ export default function BudgetsPage() {
                     </Pie>
                     <Tooltip
                       formatter={(value) => [
-                        `₱${value.toLocaleString()}`,
+                        `${symbol}${value.toLocaleString()}`,
                         "Allocated",
                       ]}
                     />
@@ -742,7 +745,7 @@ export default function BudgetsPage() {
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip
                       formatter={(value, name) => [
-                        `₱${value.toLocaleString()}`,
+                        `${symbol}${value.toLocaleString()}`,
                         name === "allocated" ? "Allocated" : "Spent",
                       ]}
                     />

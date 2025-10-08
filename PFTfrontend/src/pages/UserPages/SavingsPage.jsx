@@ -49,6 +49,8 @@ import {
   useDeleteGoal,
 } from "../../api/queries";
 
+import { useCurrency } from "../../context/CurrencyContext"; // ✅ Import context hook
+
 export default function SavingsPage() {
   const queryClient = useQueryClient();
   const { user, transactions, budgets, goals, reports } = useOutletContext();
@@ -58,6 +60,7 @@ export default function SavingsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [activeGoal, setActiveGoal] = useState(null);
   const [savingsModalOpen, setSavingsModalOpen] = useState(false);
+  const { symbol } = useCurrency(); // ✅ Get currency symbol
 
   const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6"];
   const MAX_GOALS = 9;
@@ -157,7 +160,7 @@ export default function SavingsPage() {
       Swal.fire({
         icon: "success",
         title: "Savings Added!",
-        text: `₱${Number(
+        text: `${symbol}${Number(
           savingsAmount
         ).toLocaleString()} added to your savings goal.`,
         timer: 2000,
@@ -443,7 +446,7 @@ export default function SavingsPage() {
                   Total Target
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-purple-600">
-                  ₱{totalTarget.toLocaleString()}
+                  {symbol}{totalTarget.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -462,7 +465,7 @@ export default function SavingsPage() {
                   Total Saved
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-green-600">
-                  ₱{totalSaved.toLocaleString()}
+                  {symbol}{totalSaved.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -485,7 +488,7 @@ export default function SavingsPage() {
                     totalRemaining >= 0 ? "text-orange-600" : "text-red-600"
                   }`}
                 >
-                  ₱{totalRemaining.toLocaleString()}
+                  {symbol}{totalRemaining.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -619,13 +622,13 @@ export default function SavingsPage() {
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-600">Target:</span>
                           <span className="font-semibold text-blue-600">
-                            ₱{Number(goal.target_amount).toLocaleString()}
+                            {symbol}{Number(goal.target_amount).toLocaleString()}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-600">Saved:</span>
                           <span className="font-semibold text-green-600">
-                            ₱{Number(saved).toLocaleString()}
+                            {symbol}{Number(saved).toLocaleString()}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
@@ -639,7 +642,7 @@ export default function SavingsPage() {
                                 : "text-orange-600"
                             }`}
                           >
-                            ₱{Math.max(remaining, 0).toLocaleString()}
+                            {symbol}{Math.max(remaining, 0).toLocaleString()}
                           </span>
                         </div>
                       </div>
@@ -771,12 +774,12 @@ export default function SavingsPage() {
 
                       {/* Target */}
                       <td className="py-4 px-6 font-semibold text-blue-600">
-                        ₱{target.toLocaleString()}
+                        {symbol}{target.toLocaleString()}
                       </td>
 
                       {/* Saved (from contributions) */}
                       <td className="py-4 px-6 font-semibold text-green-600">
-                        ₱{saved.toLocaleString()}
+                        {symbol}{saved.toLocaleString()}
                       </td>
 
                       {/* Remaining */}
@@ -785,7 +788,7 @@ export default function SavingsPage() {
                           remaining <= 0 ? "text-green-600" : "text-orange-600"
                         }`}
                       >
-                        ₱{Math.max(remaining, 0).toLocaleString()}
+                        {symbol}{Math.max(remaining, 0).toLocaleString()}
                       </td>
 
                       {/* Deadline */}
@@ -864,7 +867,7 @@ export default function SavingsPage() {
                       ))}
                     </Pie>
                     <Tooltip
-                      formatter={(value) => [`₱${value.toLocaleString()}`, ""]}
+                      formatter={(value) => [`${symbol}${value.toLocaleString()}`, ""]}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -897,7 +900,7 @@ export default function SavingsPage() {
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip
                       formatter={(value, name) => [
-                        `₱${value.toLocaleString()}`,
+                        `${symbol}${value.toLocaleString()}`,
                         name,
                       ]}
                     />
@@ -934,7 +937,7 @@ export default function SavingsPage() {
             <li className="flex items-start space-x-2">
               <span className="text-green-500 mt-1">•</span>
               <span>
-                Add ₱500 weekly to reach your Vacation goal by December.
+                Add {symbol}500 weekly to reach your Vacation goal by December.
               </span>
             </li>
             <li className="flex items-start space-x-2">

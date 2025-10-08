@@ -26,11 +26,18 @@ import {
   updateTransaction,
   deleteTransaction,
 } from "../../api/api";
-import { useAddTransaction, useDeleteTransaction, useUpdateTransaction } from "../../api/queries";
+import {
+  useAddTransaction,
+  useDeleteTransaction,
+  useUpdateTransaction,
+} from "../../api/queries";
+
+import { useCurrency } from "../../context/CurrencyContext";
 
 export default function IncomePage() {
   const queryClient = useQueryClient();
   const { user, transactions, budgets, goals, reports } = useOutletContext();
+  const { symbol } = useCurrency();
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -104,7 +111,10 @@ export default function IncomePage() {
     };
 
     if (editingId) {
-      await updateTransactionMutation.mutateAsync({ id: editingId, data: payload });
+      await updateTransactionMutation.mutateAsync({
+        id: editingId,
+        data: payload,
+      });
       Swal.fire("Updated!", "Income updated successfully.", "success");
     } else {
       await addTransactionMutation.mutateAsync(payload);
@@ -233,7 +243,7 @@ export default function IncomePage() {
                   Total Income
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-emerald-600">
-                  ₱{totalIncome.toLocaleString()}
+                  {symbol}{totalIncome.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -271,7 +281,7 @@ export default function IncomePage() {
                   Avg. Monthly
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-purple-600">
-                  ₱{avgMonthlyIncome.toFixed(2).toLocaleString()}
+                  {symbol}{avgMonthlyIncome.toFixed(2).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -453,7 +463,7 @@ export default function IncomePage() {
                         <td className="py-4 px-6 font-bold text-emerald-600">
                           <div className="flex items-center space-x-1">
                             <TrendingUp size={16} />
-                            <span>+₱{Number(tx.amount).toLocaleString()}</span>
+                            <span>+{symbol}{Number(tx.amount).toLocaleString()}</span>
                           </div>
                         </td>
                         <td className="py-4 px-6 text-right">
@@ -547,7 +557,7 @@ export default function IncomePage() {
                             </span>
                           </div>
                           <div className="text-lg font-bold text-emerald-600">
-                            +₱{Number(tx.amount).toLocaleString()}
+                            +{symbol}{Number(tx.amount).toLocaleString()}
                           </div>
                         </div>
                       </div>

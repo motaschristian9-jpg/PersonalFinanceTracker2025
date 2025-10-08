@@ -18,25 +18,39 @@ import PublicRoute from "./components/PublicRoute";
 import UserLayout from "./layouts/UserLayout";
 
 function App() {
+  const publicRoutes = [
+    { path: "/", element: <Landing /> },
+    { path: "/signup", element: <SignUpPage /> },
+    { path: "/login", element: <LoginPage /> },
+    { path: "/forgot-password", element: <ForgotPasswordPage /> },
+    { path: "/reset-password", element: <ResetPasswordPage /> },
+  ];
+
+  const protectedRoutes = [
+    { path: "dashboard", element: <Dashboard /> },
+    { path: "transactions", element: <Transactions /> },
+    { path: "income", element: <Income /> },
+    { path: "expenses", element: <Expenses /> },
+    { path: "budgets", element: <Budget /> },
+    { path: "savings", element: <Savings /> },
+    { path: "reports", element: <Reports /> },
+    { path: "settings", element: <Settings /> },
+    { path: "profile", element: <Profile /> },
+  ];
+
   return (
     <Router>
       <Routes>
         {/* Public Routes */}
-        {[
-          { path: "/", element: <Landing /> },
-          { path: "/signup", element: <SignUpPage /> },
-          { path: "/login", element: <LoginPage /> },
-          { path: "/forgot-password", element: <ForgotPasswordPage /> },
-          { path: "/reset-password", element: <ResetPasswordPage /> },
-        ].map((route) => (
+        {publicRoutes.map(({ path, element }) => (
           <Route
-            key={route.path}
-            path={route.path}
-            element={<PublicRoute>{route.element}</PublicRoute>}
+            key={path}
+            path={path}
+            element={<PublicRoute>{element}</PublicRoute>}
           />
         ))}
 
-        {/* Protected Routes wrapped in UserLayout */}
+        {/* Protected Routes (with layout) */}
         <Route
           element={
             <ProtectedRoute>
@@ -44,15 +58,9 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="transactions" element={<Transactions />} />
-          <Route path="income" element={<Income />} />
-          <Route path="expenses" element={<Expenses />} />
-          <Route path="budgets" element={<Budget />} />
-          <Route path="savings" element={<Savings />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="profile" element={<Profile />} />
+          {protectedRoutes.map(({ path, element }) => (
+            <Route key={path} path={path} element={element} />
+          ))}
         </Route>
       </Routes>
     </Router>

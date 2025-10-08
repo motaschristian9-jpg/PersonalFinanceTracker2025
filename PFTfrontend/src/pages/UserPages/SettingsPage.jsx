@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { Button } from "../../components/ui/button";
-import { Settings, Moon, Sun, Globe, Bell, LogOut } from "lucide-react";
+import { Settings, Moon, Globe, Bell, LogOut } from "lucide-react";
+import { useCurrency } from "../../context/CurrencyContext"; // ✅ Import context hook
 
 const SettingsPage = () => {
-  const [currency, setCurrency] = useState("₱");
+  const { currency, changeCurrency } = useCurrency(); // ✅ Only use currency code, not symbol
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   return (
@@ -51,15 +52,16 @@ const SettingsPage = () => {
                   </p>
                 </div>
               </div>
+
               <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
+                value={currency} // ✅ Use currency code from context
+                onChange={(e) => changeCurrency(e.target.value)} // ✅ Updates global state
                 className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white"
               >
-                <option value="₱">Philippine Peso (₱)</option>
-                <option value="$">US Dollar ($)</option>
-                <option value="€">Euro (€)</option>
-                <option value="£">British Pound (£)</option>
+                <option value="PHP">Philippine Peso (₱)</option>
+                <option value="USD">US Dollar ($)</option>
+                <option value="EUR">Euro (€)</option>
+                <option value="GBP">British Pound (£)</option>
               </select>
             </div>
 
@@ -101,12 +103,10 @@ const SettingsPage = () => {
           </h2>
 
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-            <div>
-              <p className="text-gray-600">
-                Ready to log out? You'll need to sign back in to access your
-                account.
-              </p>
-            </div>
+            <p className="text-gray-600">
+              Ready to log out? You'll need to sign back in to access your
+              account.
+            </p>
             <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:shadow-lg transition-all duration-300 w-full sm:w-auto">
               <LogOut className="mr-2" size={16} />
               Log Out

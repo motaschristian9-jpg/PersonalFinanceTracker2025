@@ -15,7 +15,8 @@ return new class extends Migration {
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->string('title');
             $table->decimal('target_amount', 12, 2);
-            $table->decimal('current_amount', 12, 2)->default(0);
+            // $table->decimal('current_amount', 12, 2)->default(0); // <-- REMOVED THIS LINE
+            $table->text('description')->nullable(); // <-- ADDED THIS LINE
             $table->date('deadline')->nullable();
             $table->timestamps();
         });

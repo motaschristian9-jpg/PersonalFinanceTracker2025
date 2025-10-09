@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import Swal from "sweetalert2";
 
+import { useCurrency } from "../context/CurrencyContext";
+
 export default function BudgetModal({
   budget,
   transactions = [],
@@ -32,6 +34,7 @@ export default function BudgetModal({
   const [descriptionInput, setDescriptionInput] = useState(
     localBudget.description || ""
   );
+  const { symbol } = useCurrency();
 
   const remaining = isEditing
     ? Number(allocatedInput || localBudget.amount || 0) -
@@ -71,7 +74,7 @@ export default function BudgetModal({
       Swal.fire({
         icon: "error",
         title: "Exceeded Budget",
-        text: `You only have ₱${remainingAmount.toLocaleString()} remaining in this budget.`,
+        text: `You only have ${symbol}${remainingAmount.toLocaleString()} remaining in this budget.`,
         confirmButtonColor: "#EF4444",
       });
       return;
@@ -205,7 +208,7 @@ export default function BudgetModal({
                             Allocated
                           </p>
                           <p className="text-lg font-bold text-blue-700">
-                            ₱{Number(localBudget.amount || 0).toLocaleString()}
+                            {symbol}{Number(localBudget.amount || 0).toLocaleString()}
                           </p>
                         </div>
                         <div className="bg-red-50 rounded-lg p-4 text-center">
@@ -213,7 +216,7 @@ export default function BudgetModal({
                             Spent
                           </p>
                           <p className="text-lg font-bold text-red-700">
-                            ₱{Number(localBudget.spent || 0).toLocaleString()}
+                            {symbol}{Number(localBudget.spent || 0).toLocaleString()}
                           </p>
                         </div>
                         <div className="bg-green-50 rounded-lg p-4 text-center">
@@ -221,7 +224,7 @@ export default function BudgetModal({
                             Remaining
                           </p>
                           <p className="text-lg font-bold text-green-700">
-                            ₱{remaining.toLocaleString()}
+                            {symbol}{remaining.toLocaleString()}
                           </p>
                         </div>
                       </div>
@@ -383,7 +386,7 @@ export default function BudgetModal({
                               </div>
                               <div>
                                 <p className="font-medium text-gray-800">
-                                  ₱
+                                  {symbol}
                                   {tx.amount
                                     ? Number(tx.amount).toLocaleString()
                                     : "-"}

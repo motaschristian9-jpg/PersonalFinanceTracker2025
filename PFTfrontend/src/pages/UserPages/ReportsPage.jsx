@@ -31,11 +31,14 @@ import {
 } from "lucide-react";
 import { Link, useOutletContext } from "react-router-dom";
 
+import { useCurrency } from "../../context/CurrencyContext";
+
 const ReportsPage = () => {
   const { user, transactions, budgets, goals, reports } = useOutletContext();
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [appliedRange, setAppliedRange] = useState({ from: "", to: "" });
+  const { symbol } = useCurrency();
 
   // Dummy data for charts
   const expenseData = React.useMemo(() => {
@@ -304,7 +307,8 @@ const ReportsPage = () => {
                   Total Income
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-green-600">
-                  ₱{Number(reports?.totalIncome || 0).toFixed(2)}
+                  {symbol}
+                  {Number(reports?.totalIncome || 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -323,7 +327,8 @@ const ReportsPage = () => {
                   Total Expenses
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-red-600">
-                  ₱{Number(reports?.totalExpenses || 0).toFixed(2)}
+                  {symbol}
+                  {Number(reports?.totalExpenses || 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -342,7 +347,8 @@ const ReportsPage = () => {
                   Net Balance
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-blue-600">
-                  ₱{Number(reports?.balance || 0).toFixed(2)}
+                  {symbol}
+                  {Number(reports?.balance || 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -361,7 +367,8 @@ const ReportsPage = () => {
                   Savings Achieved
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-purple-600">
-                  ₱{Number(totalSaved || 0).toFixed(2)}
+                  {symbol}
+                  {Number(totalSaved || 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -401,7 +408,7 @@ const ReportsPage = () => {
                   </Pie>
                   <Tooltip
                     formatter={(value) => [
-                      `₱${value.toLocaleString()}`,
+                      `${symbol}${value.toLocaleString()}`,
                       "Amount",
                     ]}
                   />
@@ -427,7 +434,7 @@ const ReportsPage = () => {
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip
                     formatter={(value, name) => [
-                      `₱${value.toLocaleString()}`,
+                      `${symbol}${value.toLocaleString()}`,
                       name === "income" ? "Income" : "Expenses",
                     ]}
                   />
@@ -470,10 +477,14 @@ const ReportsPage = () => {
                   </span>
                   <div className="text-sm text-gray-600">
                     <span className="font-semibold">
-                      ₱{item.spent.toLocaleString()}
+                      {symbol}
+                      {item.spent.toLocaleString()}
                     </span>
                     <span className="text-gray-400"> / </span>
-                    <span>₱{item.allocated.toLocaleString()}</span>
+                    <span>
+                      {symbol}
+                      {item.allocated.toLocaleString()}
+                    </span>
                     <span className="ml-2 font-medium">
                       ({item.percentage}%)
                     </span>
@@ -543,7 +554,8 @@ const ReportsPage = () => {
                         </span>
                       </td>
                       <td className="py-3 px-4 font-semibold text-green-600">
-                        ₱{item.amount.toLocaleString()}
+                        {symbol}
+                        {item.amount.toLocaleString()}
                       </td>
                       <td className="py-3 px-4 text-gray-600 text-sm hidden sm:table-cell">
                         {item.description || "—"}
@@ -603,7 +615,8 @@ const ReportsPage = () => {
                         </span>
                       </td>
                       <td className="py-3 px-4 font-semibold text-red-600">
-                        ₱{item.amount.toLocaleString()}
+                        {symbol}
+                        {item.amount.toLocaleString()}
                       </td>
                       <td className="py-3 px-4 text-gray-600 text-sm hidden sm:table-cell">
                         {item.description}
@@ -634,8 +647,8 @@ const ReportsPage = () => {
                 Spending Pattern
               </h4>
               <p className="text-sm text-blue-700">
-                Your highest spending category is Food (₱4,000), representing
-                35% of total expenses.
+                Your highest spending category is Food ({symbol}4,000),
+                representing 35% of total expenses.
               </p>
             </div>
             <div className="p-4 bg-green-50 rounded-lg border border-green-100">

@@ -125,6 +125,7 @@ export default function SavingsPage() {
   // Handlers
 
   const handleDeleteTransaction = async (transaction) => {
+    console.log("Deleting transaction:", transaction);
     const result = await Swal.fire({
       title: `Delete this transaction?`,
       text: "This action cannot be undone.",
@@ -176,6 +177,7 @@ export default function SavingsPage() {
   };
 
   const handleEditGoal = async (updatedGoal) => {
+    console.log("Updating goal:", updatedGoal);
     try {
       // ✅ Validation
       if (!updatedGoal.title || updatedGoal.title.trim() === "") {
@@ -446,7 +448,8 @@ export default function SavingsPage() {
                   Total Target
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-purple-600">
-                  {symbol}{totalTarget.toLocaleString()}
+                  {symbol}
+                  {totalTarget.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -465,7 +468,8 @@ export default function SavingsPage() {
                   Total Saved
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-green-600">
-                  {symbol}{totalSaved.toLocaleString()}
+                  {symbol}
+                  {totalSaved.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -488,7 +492,8 @@ export default function SavingsPage() {
                     totalRemaining >= 0 ? "text-orange-600" : "text-red-600"
                   }`}
                 >
-                  {symbol}{totalRemaining.toLocaleString()}
+                  {symbol}
+                  {totalRemaining.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -622,13 +627,15 @@ export default function SavingsPage() {
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-600">Target:</span>
                           <span className="font-semibold text-blue-600">
-                            {symbol}{Number(goal.target_amount).toLocaleString()}
+                            {symbol}
+                            {Number(goal.target_amount).toLocaleString()}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-600">Saved:</span>
                           <span className="font-semibold text-green-600">
-                            {symbol}{Number(saved).toLocaleString()}
+                            {symbol}
+                            {Number(saved).toLocaleString()}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
@@ -642,7 +649,8 @@ export default function SavingsPage() {
                                 : "text-orange-600"
                             }`}
                           >
-                            {symbol}{Math.max(remaining, 0).toLocaleString()}
+                            {symbol}
+                            {Math.max(remaining, 0).toLocaleString()}
                           </span>
                         </div>
                       </div>
@@ -758,7 +766,7 @@ export default function SavingsPage() {
 
                   return (
                     <tr
-                      key={goal.goal_id}
+                      key={goal.goal_id} // ✅ The correct placement of the unique key prop
                       className="border-b border-gray-100/50 hover:bg-green-50/30 transition-colors"
                     >
                       <td className="py-4 px-6">
@@ -774,12 +782,14 @@ export default function SavingsPage() {
 
                       {/* Target */}
                       <td className="py-4 px-6 font-semibold text-blue-600">
-                        {symbol}{target.toLocaleString()}
+                        {symbol}
+                        {target.toLocaleString()}
                       </td>
 
                       {/* Saved (from contributions) */}
                       <td className="py-4 px-6 font-semibold text-green-600">
-                        {symbol}{saved.toLocaleString()}
+                        {symbol}
+                        {saved.toLocaleString()}
                       </td>
 
                       {/* Remaining */}
@@ -788,7 +798,8 @@ export default function SavingsPage() {
                           remaining <= 0 ? "text-green-600" : "text-orange-600"
                         }`}
                       >
-                        {symbol}{Math.max(remaining, 0).toLocaleString()}
+                        {symbol}
+                        {Math.max(remaining, 0).toLocaleString()}
                       </td>
 
                       {/* Deadline */}
@@ -867,7 +878,10 @@ export default function SavingsPage() {
                       ))}
                     </Pie>
                     <Tooltip
-                      formatter={(value) => [`${symbol}${value.toLocaleString()}`, ""]}
+                      formatter={(value) => [
+                        `${symbol}${value.toLocaleString()}`,
+                        "",
+                      ]}
                     />
                   </PieChart>
                 </ResponsiveContainer>

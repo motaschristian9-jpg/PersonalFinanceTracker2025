@@ -326,7 +326,7 @@ class DashboardController extends Controller
             'title' => $request->title,
             'target_amount' => $request->target_amount,
             'deadline' => $request->deadline,
-            'description' => $request->description,
+            'description' => $request->description ?? null,
         ]);
 
         return response()->json([

@@ -130,59 +130,23 @@ export const useAddContribution = () => {
   return useMutation({
     mutationFn: addContribution,
 
-    // ✅ Optimistic update
-    onMutate: async (newContribution) => {
-      await queryClient.cancelQueries(["goals"]);
-      await queryClient.cancelQueries(["reports"]);
+    // NOTE: Removed onMutate and onSuccess handlers to eliminate temporary IDs.
+    // The hook now relies on full refetching after the API call is complete,
+    // ensuring the UI only shows items that have the real database ID.
 
-      // Snapshot previous values
-      const previousGoals = queryClient.getQueryData(["goals"]);
-      const previousReports = queryClient.getQueryData(["reports"]);
-
-      // Optimistically update goals
-      if (previousGoals) {
-        queryClient.setQueryData(["goals"], (oldGoals) =>
-          oldGoals.map((goal) =>
-            goal.goal_id === newContribution.goal_id
-              ? {
-                  ...goal,
-                  contributions: [
-                    ...(goal.contributions || []),
-                    { ...newContribution, id: Date.now() }, // fake id for now
-                  ],
-                }
-              : goal
-          )
-        );
-      }
-
-      // (Optional) update reports optimistically too
-      // Example: add to totalSaved
-      if (previousReports) {
-        queryClient.setQueryData(["reports"], (oldReports) => ({
-          ...oldReports,
-          totalSaved:
-            (oldReports.totalSaved || 0) + Number(newContribution.amount),
-        }));
-      }
-
-      return { previousGoals, previousReports };
+    // Rollback on error (Optional, but good for reporting UI)
+    onError: (err) => {
+      // You can still perform simple error reporting here if needed,
+      // but no need for complex cache rollback since we removed onMutate.
+      console.error("Failed to add contribution:", err);
     },
 
-    // Rollback on error
-    onError: (err, newContribution, context) => {
-      if (context?.previousGoals) {
-        queryClient.setQueryData(["goals"], context.previousGoals);
-      }
-      if (context?.previousReports) {
-        queryClient.setQueryData(["reports"], context.previousReports);
-      }
-    },
-
-    // ✅ Refetch after success or error
+    // ✅ Refetch after success or error (This forces the UI to get fresh data)
     onSettled: () => {
-      queryClient.invalidateQueries(["goals"]);
-      queryClient.invalidateQueries(["reports"]);
+      // These calls ensure the UI fetches the complete and accurate list of goals
+      // (which now includes the new contribution with its REAL database ID).
+      queryClient.invalidateQueries({ queryKey: ["goals"] });
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
     },
   });
 };

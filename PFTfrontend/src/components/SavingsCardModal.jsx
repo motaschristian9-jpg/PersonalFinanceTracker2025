@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import Swal from "sweetalert2";
 import {
@@ -8,10 +8,39 @@ import {
   Plus,
   TrendingUp,
   PiggyBank,
-  Target,
   Edit,
   Trash2,
 } from "lucide-react";
+
+// Note: Ensure 'sweetalert2' and '../context/CurrencyContext' are installed/available
+import { useCurrency } from "../context/CurrencyContext";
+
+// Utility function to safely format dates for display
+const formatDate = (dateString) => {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+  return date instanceof Date && !isNaN(date)
+    ? date.toLocaleDateString()
+    : null;
+};
+
+// Utility function to format date for HTML input[type="date"]
+const formatInputDate = (isoString) => {
+  if (!isoString) return "";
+  // Returns 'YYYY-MM-DD'
+  // Note: This utility is only for displaying the date in the HTML input field.
+  return isoString.split("T")[0] || "";
+};
+
+// Utility function for consistent currency formatting
+const formatCurrency = (amount, symbol) => {
+  const num = Number(amount);
+  if (isNaN(num)) return `${symbol}0.00`;
+  return `${symbol}${num.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+};
 
 export default function SavingsCardModal({
   goal,
@@ -21,56 +50,145 @@ export default function SavingsCardModal({
   onDeleteTransaction,
   onDeleteGoal,
 }) {
+  const { symbol } = useCurrency();
+  // Safe initial state declaration using optional chaining
   const [localGoal, setLocalGoal] = useState(goal);
-  const [targetInput, setTargetInput] = useState(
-    localGoal.target_amount?.toString() || ""
-  );
-  const [goalName, setGoalNameInput] = useState(localGoal.title || "");
-  const [descriptionInput, setDescriptionInput] = useState(
-    localGoal.description || ""
-  );
-  const [savingsAmount, setSavingsAmount] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  const [savingsAmount, setSavingsAmount] = useState("");
 
+  // Consolidated state for editing fields
+  const [editFields, setEditFields] = useState({
+    title: goal?.title || "",
+    target_amount: goal?.target_amount?.toString() || "",
+    description: goal?.description || "",
+    deadline: formatInputDate(goal?.deadline),
+  });
+
+  // =========================================================================
+  // EFFECTS & HOOKS (All hooks must be defined unconditionally here)
+  // =========================================================================
+
+  // FIX: Moved this useCallback here to ensure all hooks are called unconditionally
+  const handleEditFieldChange = useCallback(
+    (field) => (e) => {
+      setEditFields((prev) => ({ ...prev, [field]: e.target.value }));
+    },
+    []
+  );
+
+  // Synchronize localGoal and editFields when the 'goal' prop changes (e.g., parent update)
   useEffect(() => {
-    // Handle body scroll lock when modal is open
-    document.body.style.overflow = "hidden";
+    if (!goal) return;
 
-    // Cleanup on unmount
+    setLocalGoal(goal);
+    setEditFields({
+      title: goal.title || "",
+      target_amount: goal.target_amount?.toString() || "",
+      description: goal.description || "",
+      deadline: formatInputDate(goal.deadline),
+    });
+  }, [goal]);
+
+  // Handle body scroll lock
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = "unset";
     };
   }, []);
 
+  // Handle escape key to close modal
   useEffect(() => {
-    // Handle escape key
     const handleEscape = (e) => {
       if (e.key === "Escape") {
         onClose();
       }
     };
-
     document.addEventListener("keydown", handleEscape);
     return () => {
       document.removeEventListener("keydown", handleEscape);
     };
   }, [onClose]);
 
+  // Now, the early return is safe because all hooks have been called above it.
   if (!goal) return null;
 
-  const handleSaveChanges = async () => {
-    await onEditGoal({
-      ...localGoal,
-      title: goalName,
-      target_amount: Number(targetInput) || 0,
-      deadline: localGoal.deadline,
-      description: descriptionInput || "",
-    });
-    setIsEditing(false);
+  // =========================================================================
+  // CALCULATIONS (using localGoal)
+  // =========================================================================
+
+  const targetAmount = Number(localGoal.target_amount) || 0;
+  const contributions = Array.isArray(localGoal.contributions)
+    ? localGoal.contributions
+    : [];
+  const savedAmount = contributions.reduce(
+    (total, c) => total + Number(c.amount || 0),
+    0
+  );
+  const remainingAmount = targetAmount - savedAmount;
+  const progressPercentage =
+    targetAmount > 0 ? Math.min((savedAmount / targetAmount) * 100, 100) : 0;
+  const isGoalReached = progressPercentage >= 100;
+
+  // =========================================================================
+  // HANDLERS
+  // =========================================================================
+
+  const handleToggleEditing = () => {
+    if (isEditing) {
+      // If canceling edit, revert inputs to current local goal values
+      setEditFields({
+        title: localGoal.title || "",
+        target_amount: localGoal.target_amount?.toString() || "",
+        description: localGoal.description || "",
+        deadline: formatInputDate(localGoal.deadline),
+      });
+    }
+    setIsEditing(!isEditing);
   };
 
-  const handleAddSavings = async () => {
-    if (!savingsAmount || Number(savingsAmount) <= 0) {
+  const handleSaveChanges = async () => {
+    const newTargetAmount = Number(editFields.target_amount);
+
+    if (!editFields.title.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Missing Name",
+        text: "Please enter a name for your goal.",
+      });
+      return;
+    }
+
+    const updatedGoal = {
+      ...localGoal,
+      title: editFields.title.trim(),
+      // Ensure target amount is a non-negative number
+      target_amount: newTargetAmount >= 0 ? newTargetAmount : 0,
+      description: editFields.description.trim(),
+      // Send the YYYY-MM-DD string directly, or null
+      deadline: editFields.deadline || null,
+    };
+
+    const success = await onEditGoal(updatedGoal);
+
+    if (success !== false) {
+      setLocalGoal(updatedGoal);
+      setIsEditing(false);
+
+      Swal.fire({
+        icon: "success",
+        title: "Goal Updated! 🎉",
+        text: "Your savings goal has been successfully updated.",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  };
+
+  const handleAddSavingsSubmit = async () => {
+    const amountToAdd = Number(savingsAmount);
+
+    if (amountToAdd <= 0 || isNaN(amountToAdd)) {
       Swal.fire({
         icon: "warning",
         title: "Invalid Amount",
@@ -79,36 +197,45 @@ export default function SavingsCardModal({
       return;
     }
 
-    const currentSaved = Number(localGoal.contributions.amount);
-
-    const remainingAmount = Number(localGoal.target_amount) - currentSaved;
-
-    if (Number(savingsAmount) > remainingAmount) {
+    // Add a small buffer for floating point comparison
+    if (amountToAdd > remainingAmount + 0.001) {
       Swal.fire({
         icon: "info",
-        title: "Goal Almost Reached",
-        text: `You only need ₱${remainingAmount.toLocaleString()} more to reach your goal.`,
+        title: "Amount Exceeds Goal",
+        text: `You only need ${formatCurrency(
+          remainingAmount,
+          symbol
+        )} more to reach your goal.`,
       });
       return;
     }
 
     if (onAddSavings) {
       const newContribution = {
+        // Use a temp ID for optimistic update
+        id: `temp-${Date.now()}`,
         goal_id: goal.goal_id || goal.id,
-        amount: Number(savingsAmount),
-        date: new Date().toISOString().split("T")[0], // ✅ match `date` column (YYYY-MM-DD)
+        amount: amountToAdd,
+        date: new Date().toISOString(),
       };
 
       const success = await onAddSavings(newContribution);
 
       if (success !== false) {
+        // Optimistic update
+        setLocalGoal((prev) => ({
+          ...prev,
+          contributions: [...(prev.contributions || []), newContribution],
+        }));
+
         setSavingsAmount("");
         Swal.fire({
           icon: "success",
-          title: "Savings Added!",
-          text: `₱${Number(
-            savingsAmount
-          ).toLocaleString()} added to your savings goal.`,
+          title: "Savings Added! 💰",
+          text: `${formatCurrency(
+            amountToAdd,
+            symbol
+          )} added to your savings goal.`,
           timer: 2000,
           showConfirmButton: false,
         });
@@ -116,14 +243,31 @@ export default function SavingsCardModal({
     }
   };
 
-  const targetAmount = Number(goal.target_amount) || 0;
-  const savedAmount = Array.isArray(goal.contributions)
-    ? goal.contributions.reduce((total, c) => total + Number(c.amount || 0), 0)
-    : 0;
-  const remainingAmount = targetAmount - savedAmount;
-  const progressPercentage =
-    targetAmount > 0 ? Math.min((savedAmount / targetAmount) * 100, 100) : 0;
+  const handleDeleteContribution = async (contribution) => {
+    const success = await onDeleteTransaction(contribution);
 
+    if (success !== false) {
+      // Optimistic update: Remove the contribution from local state
+      setLocalGoal((prev) => ({
+        ...prev,
+        contributions: prev.contributions.filter(
+          (c) => (c.id || c.tempId) !== (contribution.id || contribution.tempId)
+        ),
+      }));
+
+      Swal.fire({
+        icon: "success",
+        title: "Transaction Deleted!",
+        text: "The saving contribution has been removed.",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  };
+
+  // =========================================================================
+  // RENDER
+  // =========================================================================
   const modalContent = (
     <div
       className="fixed inset-0 z-[9999] flex justify-center items-center p-4"
@@ -147,11 +291,11 @@ export default function SavingsCardModal({
                 </div>
                 <div>
                   <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
-                    {goal.title}
+                    {localGoal.title}
                   </h2>
-                  {goal.description && (
+                  {localGoal.description && (
                     <p className="text-sm text-gray-600 mt-1">
-                      {goal.description}
+                      {localGoal.description}
                     </p>
                   )}
                 </div>
@@ -159,7 +303,7 @@ export default function SavingsCardModal({
 
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => setIsEditing(!isEditing)}
+                  onClick={handleToggleEditing}
                   className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all duration-200 text-sm font-medium"
                 >
                   <Edit size={16} />
@@ -209,7 +353,7 @@ export default function SavingsCardModal({
                         <div className="w-full bg-gray-200 rounded-full h-3">
                           <div
                             className={`h-3 rounded-full transition-all duration-300 ${
-                              progressPercentage >= 100
+                              isGoalReached
                                 ? "bg-green-500"
                                 : progressPercentage >= 75
                                 ? "bg-blue-500"
@@ -231,7 +375,7 @@ export default function SavingsCardModal({
                             Target
                           </p>
                           <p className="text-lg font-bold text-green-700">
-                            ₱{targetAmount.toLocaleString()}
+                            {formatCurrency(targetAmount, symbol)}
                           </p>
                         </div>
                         <div className="bg-blue-50 rounded-lg p-4 text-center">
@@ -239,7 +383,7 @@ export default function SavingsCardModal({
                             Saved
                           </p>
                           <p className="text-lg font-bold text-blue-700">
-                            ₱{savedAmount.toLocaleString()}
+                            {formatCurrency(savedAmount, symbol)}
                           </p>
                         </div>
                         <div className="bg-orange-50 rounded-lg p-4 text-center">
@@ -247,13 +391,13 @@ export default function SavingsCardModal({
                             Remaining
                           </p>
                           <p className="text-lg font-bold text-orange-700">
-                            ₱{remainingAmount.toLocaleString()}
+                            {formatCurrency(remainingAmount, symbol)}
                           </p>
                         </div>
                       </div>
 
                       {/* Deadline Info */}
-                      {goal.deadline && (
+                      {localGoal.deadline && (
                         <div className="bg-purple-50 rounded-lg p-4">
                           <div className="flex items-center space-x-2 mb-2">
                             <Calendar size={16} className="text-purple-600" />
@@ -262,7 +406,7 @@ export default function SavingsCardModal({
                             </span>
                           </div>
                           <p className="text-purple-700 font-bold">
-                            {new Date(goal.deadline).toLocaleDateString()}
+                            {formatDate(localGoal.deadline)}
                           </p>
                         </div>
                       )}
@@ -271,13 +415,13 @@ export default function SavingsCardModal({
                 </div>
               </div>
 
-              {/* Add Savings Section */}
+              {/* Add Savings Section / Edit Goal Section */}
               {isEditing ? (
                 <div className="relative mb-6">
                   <div className="absolute -inset-1 bg-gradient-to-r from-orange-200/30 to-orange-300/20 rounded-xl blur opacity-30"></div>
                   <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-orange-100/50 p-4 sm:p-6">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                      Edit Goal
+                      Edit Goal Details
                     </h3>
 
                     <div className="space-y-4">
@@ -288,9 +432,9 @@ export default function SavingsCardModal({
                         </label>
                         <input
                           type="text"
+                          value={editFields.title}
                           placeholder="Enter Goal Name"
-                          value={goalName}
-                          onChange={(e) => setGoalNameInput(e.target.value)}
+                          onChange={handleEditFieldChange("title")}
                           className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                         />
                       </div>
@@ -298,27 +442,29 @@ export default function SavingsCardModal({
                       {/* Target Amount */}
                       <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700">
-                          Target Amount
+                          Target Amount ({symbol})
                         </label>
                         <input
                           type="number"
-                          value={targetInput}
-                          onChange={(e) => setTargetInput(e.target.value)}
+                          value={editFields.target_amount}
+                          onChange={handleEditFieldChange("target_amount")}
                           className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                           placeholder="Enter Target Amount"
+                          min="0"
+                          step="0.01"
                         />
                       </div>
 
                       {/* Description */}
                       <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700">
-                          Description
+                          Description (Optional)
                         </label>
-                        <input
-                          type="text"
-                          value={descriptionInput}
-                          onChange={(e) => setDescriptionInput(e.target.value)}
-                          className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                        <textarea
+                          rows="2"
+                          value={editFields.description}
+                          onChange={handleEditFieldChange("description")}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
                           placeholder="Enter description"
                         />
                       </div>
@@ -326,12 +472,12 @@ export default function SavingsCardModal({
                       {/* Deadline */}
                       <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700">
-                          Deadline
+                          Deadline (Optional)
                         </label>
                         <input
                           type="date"
-                          value={localGoal.deadline}
-                          onChange={(e) => setLocalGoal(e.target.value)}
+                          value={editFields.deadline}
+                          onChange={handleEditFieldChange("deadline")}
                           className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                         />
                       </div>
@@ -339,7 +485,11 @@ export default function SavingsCardModal({
                       {/* Save Button */}
                       <button
                         onClick={handleSaveChanges}
-                        className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg hover:shadow-lg transition-all duration-300 font-medium"
+                        className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg hover:shadow-lg transition-all duration-300 font-medium disabled:opacity-50"
+                        disabled={
+                          !editFields.title.trim() ||
+                          isNaN(Number(editFields.target_amount))
+                        }
                       >
                         Save Changes
                       </button>
@@ -364,21 +514,22 @@ export default function SavingsCardModal({
                           />
                           <input
                             type="number"
-                            placeholder="Enter savings amount"
+                            placeholder={`Amount (${symbol})`}
                             value={savingsAmount}
                             onChange={(e) => setSavingsAmount(e.target.value)}
                             className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
-                            min="0"
+                            min="0.01"
                             step="0.01"
-                            max={remainingAmount}
                           />
                         </div>
                         <button
-                          onClick={handleAddSavings}
+                          onClick={handleAddSavingsSubmit}
                           disabled={
-                            !savingsAmount || Number(savingsAmount) <= 0
+                            !savingsAmount ||
+                            Number(savingsAmount) <= 0 ||
+                            isNaN(Number(savingsAmount))
                           }
-                          className="px-4 sm:px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center space-x-2 font-medium"
+                          className="px-4 sm:px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center space-x-2 font-medium disabled:opacity-50 disabled:transform-none"
                         >
                           <Plus size={16} />
                           <span>Add Savings</span>
@@ -391,15 +542,16 @@ export default function SavingsCardModal({
                             <span className="font-medium">
                               Remaining to goal:
                             </span>{" "}
-                            ₱{remainingAmount.toLocaleString()}
+                            {formatCurrency(remainingAmount, symbol)}
                           </p>
                         </div>
                       )}
 
-                      {progressPercentage >= 100 && (
+                      {isGoalReached && (
                         <div className="bg-green-100 border border-green-200 rounded-lg p-3">
                           <p className="text-sm text-green-800 font-medium text-center">
                             Congratulations! You've reached your savings goal!
+                            🏆
                           </p>
                         </div>
                       )}
@@ -419,8 +571,8 @@ export default function SavingsCardModal({
                     <span>Savings History</span>
                   </h3>
 
-                  <div className="flex-1 overflow-y-auto">
-                    {localGoal?.contributions?.length === 0 ? (
+                  <div className="flex-1 overflow-y-auto pr-2 -mr-2">
+                    {contributions.length === 0 ? (
                       <div className="text-center py-8">
                         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                           <PiggyBank className="text-gray-400" size={24} />
@@ -434,9 +586,10 @@ export default function SavingsCardModal({
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {localGoal.contributions &&
-                        localGoal.contributions.length > 0 ? (
-                          localGoal.contributions.map((contribution, index) => (
+                        {contributions
+                          // Sort by date descending (most recent first)
+                          .sort((a, b) => new Date(b.date) - new Date(a.date))
+                          .map((contribution, index) => (
                             <div
                               key={contribution.id ?? index}
                               className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100 hover:shadow-md transition-shadow"
@@ -450,19 +603,14 @@ export default function SavingsCardModal({
                                 </div>
                                 <div>
                                   <p className="font-medium text-gray-800">
-                                    ₱
-                                    {contribution.amount
-                                      ? Number(
-                                          contribution.amount
-                                        ).toLocaleString()
-                                      : "-"}
+                                    {formatCurrency(
+                                      contribution.amount,
+                                      symbol
+                                    )}
                                   </p>
                                   <p className="text-xs text-gray-500">
-                                    {contribution.date
-                                      ? new Date(
-                                          contribution.date
-                                        ).toLocaleDateString()
-                                      : "-"}
+                                    {formatDate(contribution.date) ||
+                                      "Unknown Date"}
                                   </p>
                                 </div>
                               </div>
@@ -470,23 +618,15 @@ export default function SavingsCardModal({
                               {onDeleteTransaction && (
                                 <button
                                   className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200"
-                                  onClick={async () => {
-                                    await onDeleteTransaction(contribution);
-                                    setLocalGoal((prev) => ({
-                                      ...prev,
-                                    }));
-                                  }}
+                                  onClick={() =>
+                                    handleDeleteContribution(contribution)
+                                  }
                                 >
                                   <Trash2 size={16} />
                                 </button>
                               )}
                             </div>
-                          ))
-                        ) : (
-                          <p className="text-sm text-gray-500 text-center py-4">
-                            No contributions yet.
-                          </p>
-                        )}
+                          ))}
                       </div>
                     )}
                   </div>

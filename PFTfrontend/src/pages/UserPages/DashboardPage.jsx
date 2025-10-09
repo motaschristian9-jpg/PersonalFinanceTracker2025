@@ -70,8 +70,7 @@ export default function Dashboard() {
   const [savingsModalOpen, setSavingsModalOpen] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState(null);
 
-  const { symbol } = useCurrency(); // Get the currency symbol
-  console.log(symbol);
+  const { symbol } = useCurrency();
 
   const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444"];
   const MAX_ITEMS = 9;

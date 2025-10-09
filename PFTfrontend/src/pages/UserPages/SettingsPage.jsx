@@ -3,10 +3,13 @@ import { Button } from "../../components/ui/button";
 import { Settings, Moon, Globe, Bell, LogOut } from "lucide-react";
 import { useCurrency } from "../../context/CurrencyContext";
 import { useUpdateCurrency } from "../../api/queries";
+import { useQueryClient } from "@tanstack/react-query";
 
 const SettingsPage = () => {
+  const queryClient = useQueryClient();
   const { currency, changeCurrency } = useCurrency();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const { resetCurrency } = useCurrency();
   const { mutate: updateCurrency, isPending } = useUpdateCurrency();
 
   const handleCurrencyChange = (newCurrency) => {
@@ -35,6 +38,21 @@ const SettingsPage = () => {
 
     // 2. Update backend with the new symbol
     updateCurrency({ currency_symbol: newSymbol });
+  };
+
+  const handleLogout = () => {
+    // 1. Aggressively remove all possible user/token storage
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
+
+    // 2. Clear application state (Context and React Query Cache)
+    resetCurrency();
+    queryClient.clear();
+
+    // 3. 💥 FIX: Navigate IMMEDIATELY to prevent stale data flashing
+    window.location.href = "/login";
   };
 
   return (
@@ -95,31 +113,6 @@ const SettingsPage = () => {
                 <option value="GBP">British Pound (£)</option>
               </select>
             </div>
-
-            {/* Notifications Setting */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 p-4 bg-gradient-to-r from-purple-50 to-purple-100/50 rounded-lg border border-purple-200/50">
-              <div className="flex items-center space-x-3">
-                <Bell className="text-purple-500" size={20} />
-                <div>
-                  <h3 className="font-medium text-gray-800">Notifications</h3>
-                  <p className="text-sm text-gray-600">
-                    Enable or disable notifications
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  notificationsEnabled ? "bg-purple-600" : "bg-gray-300"
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    notificationsEnabled ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
-              </button>
-            </div>
           </div>
         </div>
       </section>
@@ -138,7 +131,10 @@ const SettingsPage = () => {
               Ready to log out? You'll need to sign back in to access your
               account.
             </p>
-            <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:shadow-lg transition-all duration-300 w-full sm:w-auto">
+            <Button
+              className="bg-gradient-to-r from-red-600 to-red-700 hover:shadow-lg transition-all duration-300 w-full sm:w-auto"
+              onClick={handleLogout}
+            >
               <LogOut className="mr-2" size={16} />
               Log Out
             </Button>

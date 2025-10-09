@@ -12,6 +12,8 @@ import {
   FileText,
 } from "lucide-react";
 
+import { useCurrency } from "../context/CurrencyContext";
+
 export default function ModalForm({
   isOpen,
   type,
@@ -24,6 +26,7 @@ export default function ModalForm({
 }) {
   const [loading, setLoading] = useState(false);
   const [expenseAmount, setExpenseAmount] = useState("");
+  const { symbol } = useCurrency();
 
   useEffect(() => {
     if (isOpen) {
@@ -308,10 +311,16 @@ export default function ModalForm({
                       Amount <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
-                      <DollarSign
+                      {/* 2. REPLACE DollarSign with a <span> and the dynamic symbol */}
+                      <span
                         size={18}
+                        // Apply the same positioning and styling classes
                         className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                      />
+                      >
+                        {/* Render the dynamic symbol here */}
+                        {symbol}
+                      </span>
+                      {/* The input remains the same, using the pl-11 to create space for the symbol */}
                       <input
                         type="number"
                         placeholder="0.00"
@@ -410,10 +419,16 @@ export default function ModalForm({
                           Budget Amount <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
-                          <DollarSign
-                            size={18}
+                          {/* REPLACEMENT: Use a span to display the dynamic symbol */}
+                          <span
+                            // The size property is for an icon component; a span doesn't need it.
+                            // We preserve the positioning and styling classes.
                             className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                          />
+                            style={{ fontSize: "1.125rem" }} // Optional: Adjust font size to match the 'size=18' icon
+                          >
+                            {symbol}
+                          </span>
+                          {/* The input remains the same, relying on pl-11 for padding */}
                           <input
                             type="number"
                             placeholder="0.00"
@@ -518,7 +533,7 @@ export default function ModalForm({
                               <div>
                                 <p className="text-gray-600">Allocated</p>
                                 <p className="font-bold text-blue-600">
-                                  ₱
+                                  {symbol}
                                   {Number(
                                     selectedBudget.allocated || 0
                                   ).toLocaleString()}
@@ -527,7 +542,7 @@ export default function ModalForm({
                               <div>
                                 <p className="text-gray-600">Remaining</p>
                                 <p className="font-bold text-green-600">
-                                  ₱
+                                  {symbol}
                                   {Number(
                                     selectedBudget.remaining || 0
                                   ).toLocaleString()}
@@ -543,10 +558,16 @@ export default function ModalForm({
                           Expense Amount <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
-                          <DollarSign
-                            size={18}
+                          {/* REPLACED: DollarSign is now a dynamic span */}
+                          <span
+                            // Keeping the size property here is redundant for a <span> but harmless.
+                            // The font size should be controlled by your CSS, or use a utility class.
                             className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                          />
+                          >
+                            {/* Render the dynamic currency symbol */}
+                            {symbol}
+                          </span>
+                          {/* The input element remains the same, using pl-11 to make space for the symbol */}
                           <input
                             type="number"
                             placeholder="0.00"
@@ -560,7 +581,7 @@ export default function ModalForm({
                         </div>
                         {selectedBudget.remaining && (
                           <p className="text-xs text-gray-500">
-                            Maximum: ₱
+                            Maximum: {symbol}
                             {Number(selectedBudget.remaining).toLocaleString()}
                           </p>
                         )}
@@ -592,10 +613,15 @@ export default function ModalForm({
                       Target Amount <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
-                      <DollarSign
+                      {/* 2. REPLACE DollarSign with a <span> and the dynamic symbol */}
+                      <span
                         size={18}
                         className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                      />
+                      >
+                        {symbol}
+                      </span>
+                      {/* 3. Adjust the padding (pl-11) to account for the symbol's width,
+          though pl-11 is likely sufficient for all single-character symbols. */}
                       <input
                         type="number"
                         placeholder="0.00"

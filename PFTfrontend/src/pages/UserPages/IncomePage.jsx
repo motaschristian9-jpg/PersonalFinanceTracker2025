@@ -19,7 +19,7 @@ import {
   PiggyBank,
 } from "lucide-react";
 import ModalForm from "../../components/ModalForm";
-import { exportToExcel } from "../../utils/exportUtils";
+import { exportIncomeReport } from "../../utils/exportUtils";
 import {
   fetchTransactions,
   addTransaction,
@@ -213,7 +213,7 @@ export default function IncomePage() {
               </button>
               <button
                 onClick={() =>
-                  exportToExcel(filteredIncome, {
+                  exportIncomeReport(filteredIncome, {
                     totalIncome,
                     highestSource,
                     avgMonthlyIncome,

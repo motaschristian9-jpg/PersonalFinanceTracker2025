@@ -90,7 +90,9 @@ export const addExpenseToBudget = (data) =>
 export const addContribution = (data) =>
   api.post(`/dashboard/goals/${data.goal_id}/add-contribution`, {
     amount: Number(data.amount),
-    date: data.date,
+    date: data.date
+      ? new Date(data.date).toISOString().split("T")[0]
+      : undefined,
   });
 
 // --- Updating Data ---
@@ -141,4 +143,5 @@ export const updateProfile = (userId, profileData) =>
     email: profileData.email,
   });
 
-export const updateUserCurrency = (data) => api.put("/dashboard/user/currency", data);
+export const updateUserCurrency = (data) =>
+  api.put("/dashboard/user/currency", data);

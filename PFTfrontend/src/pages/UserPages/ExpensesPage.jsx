@@ -20,7 +20,7 @@ import {
   MinusCircle,
 } from "lucide-react";
 import ModalForm from "../../components/ModalForm";
-import { exportToExcel } from "../../utils/exportUtils";
+import { exportExpenseReport } from "../../utils/exportUtils";
 import {
   fetchTransactions,
   addTransaction,
@@ -202,7 +202,7 @@ export default function ExpensesPage() {
               </button>
               <button
                 onClick={() =>
-                  exportToExcel(filteredExpenses, {
+                  exportExpenseReport(filteredExpenses, {
                     totalExpenses,
                     largestCategory,
                     avgMonthlyExpenses,

@@ -32,6 +32,11 @@ import {
 import { Link, useOutletContext } from "react-router-dom";
 
 import { useCurrency } from "../../context/CurrencyContext";
+import {
+  exportIncomeReport,
+  exportExpenseReport,
+  exportFullReport,
+} from "../../utils/exportUtils";
 
 // ===================================================================
 // Helper Functions
@@ -223,6 +228,8 @@ const ReportsPage = () => {
         amount: Number(tx.amount || 0),
         date: tx.transaction_date,
         description: tx.description || "No description",
+        category: tx.category,
+        transaction_date: tx.transaction_date,
       }));
   }, [transactions, appliedRange]);
 
@@ -244,6 +251,7 @@ const ReportsPage = () => {
         amount: Number(tx.amount || 0),
         date: tx.transaction_date,
         description: tx.description || "No description",
+        transaction_date: tx.transaction_date,
       }));
   }, [transactions, appliedRange]);
 
@@ -311,7 +319,98 @@ const ReportsPage = () => {
 
   const handleApplyFilter = () =>
     setAppliedRange({ from: dateFrom, to: dateTo });
-  const handleExport = (type) => console.log(`Exporting ${type}...`);
+
+  // Updated export handlers
+  const handleExport = (type) => {
+    if (type === "Income") {
+      const incomeSummary = {
+        totalIncome: filteredSummaryData.totalIncome,
+        highestSource:
+          incomeReports.length > 0
+            ? incomeReports.reduce((max, tx) =>
+                Number(tx.amount) > Number(max.amount) ? tx : max
+              ).source
+            : "—",
+        avgMonthlyIncome:
+          incomeReports.length > 0
+            ? filteredSummaryData.totalIncome /
+              new Set(
+                incomeReports.map((tx) =>
+                  new Date(tx.transaction_date).getMonth()
+                )
+              ).size
+            : 0,
+      };
+      exportIncomeReport(incomeReports, incomeSummary, appliedRange);
+    } else if (type === "Expense") {
+      const expenseSummary = {
+        totalExpenses: filteredSummaryData.totalExpenses,
+        largestCategory:
+          expenseReports.length > 0
+            ? expenseReports.reduce((max, tx) =>
+                Number(tx.amount) > Number(max.amount) ? tx : max
+              ).category
+            : "—",
+        avgMonthlyExpenses:
+          expenseReports.length > 0
+            ? filteredSummaryData.totalExpenses /
+              new Set(
+                expenseReports.map((tx) =>
+                  new Date(tx.transaction_date).getMonth()
+                )
+              ).size
+            : 0,
+      };
+      exportExpenseReport(expenseReports, expenseSummary, appliedRange);
+    } else if (type === "Full Report") {
+      const incomeSummary = {
+        totalIncome: filteredSummaryData.totalIncome,
+        highestSource:
+          incomeReports.length > 0
+            ? incomeReports.reduce((max, tx) =>
+                Number(tx.amount) > Number(max.amount) ? tx : max
+              ).source
+            : "—",
+        avgMonthlyIncome:
+          incomeReports.length > 0
+            ? filteredSummaryData.totalIncome /
+              new Set(
+                incomeReports.map((tx) =>
+                  new Date(tx.transaction_date).getMonth()
+                )
+              ).size
+            : 0,
+      };
+
+      const expenseSummary = {
+        totalExpenses: filteredSummaryData.totalExpenses,
+        largestCategory:
+          expenseReports.length > 0
+            ? expenseReports.reduce((max, tx) =>
+                Number(tx.amount) > Number(max.amount) ? tx : max
+              ).category
+            : "—",
+        avgMonthlyExpenses:
+          expenseReports.length > 0
+            ? filteredSummaryData.totalExpenses /
+              new Set(
+                expenseReports.map((tx) =>
+                  new Date(tx.transaction_date).getMonth()
+                )
+              ).size
+            : 0,
+      };
+
+      exportFullReport(
+        incomeReports,
+        expenseReports,
+        incomeSummary,
+        expenseSummary,
+        appliedRange,
+        symbol
+      );
+    }
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 p-4 sm:p-6 lg:p-0">
@@ -334,13 +433,12 @@ const ReportsPage = () => {
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
-              {/* Added handleExport to the main Export button */}
               <button
                 onClick={() => handleExport("Full Report")}
                 className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 border-2 border-purple-200 text-purple-700 rounded-xl shadow-lg hover:shadow-xl hover:bg-purple-50 transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base"
               >
                 <FileDown size={16} className="sm:w-[18px] sm:h-[18px]" />
-                <span className="font-medium">Export</span>
+                <span className="font-medium">Export Full Report</span>
               </button>
             </div>
           </div>
@@ -637,11 +735,11 @@ const ReportsPage = () => {
                 </p>
               </div>
               <button
-                onClick={() => handleExport("Income Report")}
+                onClick={() => handleExport("Income")}
                 className="text-green-600 hover:text-green-700 transition-colors p-2 rounded-lg hover:bg-green-50 text-sm flex items-center space-x-1"
               >
                 <FileDown size={14} />
-                <span>Export CSV</span>
+                <span>Export</span>
               </button>
             </div>
 
@@ -717,11 +815,11 @@ const ReportsPage = () => {
                 </p>
               </div>
               <button
-                onClick={() => handleExport("Expense Report")}
+                onClick={() => handleExport("Expense")}
                 className="text-red-600 hover:text-red-700 transition-colors p-2 rounded-lg hover:bg-red-50 text-sm flex items-center space-x-1"
               >
                 <FileDown size={14} />
-                <span>Export CSV</span>
+                <span>Export</span>
               </button>
             </div>
 

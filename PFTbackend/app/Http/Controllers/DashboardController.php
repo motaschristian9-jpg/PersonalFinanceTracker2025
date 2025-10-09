@@ -396,4 +396,20 @@ class DashboardController extends Controller
         ]);
     }
 
+    public function updateCurrency(Request $request)
+    {
+        $request->validate([
+            'currency_symbol' => 'required|string|max:10',
+        ]);
+
+        $user = $request->user();
+        $user->currency_symbol = $request->currency_symbol;
+        $user->save();
+
+        return response()->json([
+            'message' => 'Currency updated successfully.',
+            'currency_symbol' => $user->currency_symbol,
+        ]);
+    }
+
 }

@@ -62,5 +62,7 @@ Route::middleware([JWTMiddleware::class])->group(function () {
 
         // Reports
         Route::get('reports', [DashboardController::class, 'reports']);
+        
+        Route::put('user/currency', [DashboardController::class, 'updateCurrency']);
     });
 });

@@ -19,6 +19,7 @@ import {
   addExpenseToBudget, // <- import new API function
   changePassword,
   updateProfile,
+  updateUserCurrency, // <- import new API function
 } from "./api";
 
 // ------------------ HELPER ------------------
@@ -36,7 +37,7 @@ const useFetch = (key, fetchFn, defaultValue = []) => {
 };
 
 // ------------------ QUERIES ------------------
-export const useProfile = () => useFetch("profile", fetchProfile);
+export const useProfile = () => useFetch("user", fetchProfile);
 
 export const useTransactions = () =>
   useFetch("transactions", fetchTransactions);
@@ -556,6 +557,41 @@ export const useUpdateProfile = () => {
 
     onSettled: (data, error, variables) => {
       queryClient.invalidateQueries(["user", variables.userId]);
+    },
+  });
+};
+
+export const useUpdateCurrency = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateUserCurrency,
+
+    onMutate: async (newCurrency) => {
+      await queryClient.cancelQueries({ queryKey: ["user"] });
+
+      // Take a snapshot of current user data
+      const previousUser = queryClient.getQueryData(["user"]);
+
+      // Optimistically update user's currency symbol in cache
+      queryClient.setQueryData(["user"], (old) => ({
+        ...old,
+        currency_symbol: newCurrency.currency_symbol,
+      }));
+
+      return { previousUser };
+    },
+
+    onError: (err, newCurrency, context) => {
+      // Rollback on error
+      if (context?.previousUser) {
+        queryClient.setQueryData(["user"], context.previousUser);
+      }
+    },
+
+    onSettled: () => {
+      // Always refetch the latest user data
+      queryClient.invalidateQueries(["user"]);
     },
   });
 };

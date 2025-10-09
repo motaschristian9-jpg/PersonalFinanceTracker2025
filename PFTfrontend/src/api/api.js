@@ -140,3 +140,5 @@ export const updateProfile = (userId, profileData) =>
     fullName: profileData.fullName,
     email: profileData.email,
   });
+
+export const updateUserCurrency = (data) => api.put("/dashboard/user/currency", data);

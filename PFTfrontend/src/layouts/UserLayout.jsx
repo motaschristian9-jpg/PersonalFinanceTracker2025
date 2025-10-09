@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Link, useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { useCurrency } from "../context/CurrencyContext";
 import {
   LayoutDashboard,
   List,
@@ -27,36 +28,55 @@ import {
 
 export default function UserLayout() {
   const queryClient = useQueryClient();
+  const { resetCurrency } = useCurrency();
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     const saved = localStorage.getItem("sidebarOpen");
     return saved !== null ? JSON.parse(saved) : window.innerWidth >= 768;
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const [hasUnread, setHasUnread] = useState(false);
+
   const dropdownRef = useRef(null);
   const notificationRef = useRef(null);
 
-  const navigate = useNavigate();
-  const location = useLocation();
+  // --- React Query: Fetch data ---
+  const { data: user, isLoading: profileLoading } = useProfile();
+  const { data: transactions, isLoading: transactionsLoading } =
+    useTransactions();
+  const { data: budgets, isLoading: budgetsLoading } = useBudgets();
+  const { data: goals, isLoading: goalsLoading } = useGoals();
+  const { data: reports, isLoading: reportsLoading } = useReports();
 
-  const handleBellClick = () => {
-    setNotificationOpen(!notificationOpen);
-    if (!notificationOpen) setHasUnread(false); // Mark as read
-  };
+  const loading =
+    profileLoading ||
+    transactionsLoading ||
+    budgetsLoading ||
+    goalsLoading ||
+    reportsLoading;
 
+  // --- Handle Logout ---
   const handleLogout = () => {
+    // 1. Aggressively remove all possible user/token storage
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     sessionStorage.removeItem("token");
     sessionStorage.removeItem("user");
 
+    // 2. Clear application state (Context and React Query Cache)
+    resetCurrency();
     queryClient.clear();
-    navigate("/login");
+
+    // 3. 💥 FIX: Navigate IMMEDIATELY to prevent stale data flashing
+    window.location.href = '/login';
   };
 
+  // --- Sidebar toggles ---
   const toggleSidebar = () => {
     setSidebarOpen((prev) => {
       const newValue = !prev;
@@ -64,24 +84,20 @@ export default function UserLayout() {
       return newValue;
     });
   };
+  const toggleMobileMenu = () => setMobileMenuOpen((prev) => !prev);
 
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen((prev) => !prev);
-  };
-
-  // Close mobile menu when screen size changes
+  // --- Close mobile menu on resize ---
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 768) {
-        setMobileMenuOpen(false);
-      }
+      if (window.innerWidth >= 768) setMobileMenuOpen(false);
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // --- Close dropdowns when clicking outside ---
   useEffect(() => {
-    function handleClickOutside(event) {
+    const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setDropdownOpen(false);
       }
@@ -91,38 +107,16 @@ export default function UserLayout() {
       ) {
         setNotificationOpen(false);
       }
-    }
+    };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // --- React Query: Fetch all necessary data ---
-  const { data: user, isLoading: profileLoading } = useProfile();
-
-  const { data: transactions, isLoading: transactionsLoading } =
-    useTransactions();
-
-  const { data: budgets, isLoading: budgetsLoading } = useBudgets();
-
-  const { data: goals, isLoading: goalsLoading } = useGoals();
-
-  const { data: reports, isLoading: reportsLoading } = useReports();
-
-  // --- Global loading check ---
-  const loading =
-    profileLoading ||
-    transactionsLoading ||
-    budgetsLoading ||
-    goalsLoading ||
-    reportsLoading;
-
   // --- Generate notifications ---
-  // ✅ Notification Generator
   const generatedNotifications = useMemo(() => {
     if (!budgets || !goals || !transactions) return [];
-    const notifications = [];
+    const result = [];
 
-    // --- Budgets ---
     budgets.forEach((b) => {
       const spent = transactions
         .filter((t) => t.budget_id === b.budget_id)
@@ -130,13 +124,13 @@ export default function UserLayout() {
       const percent = b.amount > 0 ? (spent / b.amount) * 100 : 0;
 
       if (percent >= 100)
-        notifications.push({
+        result.push({
           id: `budget-${b.budget_id}-over`,
           message: `⚠️ You have spent your ${b.category} budget!`,
           type: "error",
         });
       else if (percent >= 80)
-        notifications.push({
+        result.push({
           id: `budget-${b.budget_id}-warn`,
           message: `⚠️ You have used ${Math.floor(percent)}% of your ${
             b.category
@@ -145,7 +139,6 @@ export default function UserLayout() {
         });
     });
 
-    // --- Goals ---
     goals.forEach((g) => {
       const current = Array.isArray(g.contributions)
         ? g.contributions.reduce((sum, c) => sum + Number(c.amount || 0), 0)
@@ -154,13 +147,13 @@ export default function UserLayout() {
         g.target_amount > 0 ? (current / g.target_amount) * 100 : 0;
 
       if (progress >= 100)
-        notifications.push({
+        result.push({
           id: `goal-${g.goal_id}-complete`,
           message: `🎉 You've reached your savings goal: ${g.title}!`,
           type: "success",
         });
       else if (progress >= 80)
-        notifications.push({
+        result.push({
           id: `goal-${g.goal_id}-high`,
           message: `🎯 You're ${Math.floor(progress)}% of the way to ${
             g.title
@@ -168,29 +161,29 @@ export default function UserLayout() {
           type: "info",
         });
       else if (progress >= 50)
-        notifications.push({
+        result.push({
           id: `goal-${g.goal_id}-mid`,
           message: `🎯 You've reached 50% of ${g.title}. Keep going!`,
           type: "info",
         });
     });
 
-    return notifications;
+    return result;
   }, [budgets, goals, transactions]);
 
   useEffect(() => {
-    const hasChanged =
+    const changed =
       generatedNotifications.length !== notifications.length ||
       JSON.stringify(generatedNotifications) !== JSON.stringify(notifications);
 
-    if (hasChanged) {
+    if (changed) {
       setNotifications(generatedNotifications);
       setHasUnread(generatedNotifications.length > 0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [generatedNotifications]);
 
-  // --- Menu items ---
+  // --- Menu Items ---
   const menuItems = [
     {
       label: "Dashboard",
@@ -206,6 +199,7 @@ export default function UserLayout() {
     { label: "Settings", icon: <Settings size={20} />, path: "/settings" },
   ];
 
+  // --- Loading Screen ---
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-white via-green-50 to-green-100 flex items-center justify-center">
@@ -229,13 +223,13 @@ export default function UserLayout() {
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-white via-green-50 to-green-100">
-      {/* Background decoration */}
+      {/* Background decorations */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-green-200/20 to-green-300/10 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-gradient-to-tr from-green-100/30 to-green-200/20 rounded-full blur-2xl"></div>
       </div>
 
-      {/* Mobile Overlay */}
+      {/* Mobile overlay */}
       {mobileMenuOpen && (
         <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-20 md:hidden"
@@ -284,7 +278,7 @@ export default function UserLayout() {
             </div>
 
             {/* Navigation */}
-            <nav className={`space-y-2`}>
+            <nav className="space-y-2">
               {menuItems.map((item, idx) => {
                 const isActive = location.pathname === item.path;
                 return (
@@ -293,12 +287,11 @@ export default function UserLayout() {
                     to={item.path}
                     className={`group flex items-center ${
                       sidebarOpen ? "space-x-3 px-4" : "justify-center px-3"
-                    } py-3 rounded-xl transition-all duration-200 relative overflow-hidden
-                      ${
-                        isActive
-                          ? "bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg"
-                          : "text-gray-700 hover:text-green-600 hover:bg-green-50"
-                      }`}
+                    } py-3 rounded-xl transition-all duration-200 relative overflow-hidden ${
+                      isActive
+                        ? "bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg"
+                        : "text-gray-700 hover:text-green-600 hover:bg-green-50"
+                    }`}
                   >
                     {isActive && (
                       <div className="absolute inset-0 bg-gradient-to-r from-green-600/90 to-green-700/90"></div>
@@ -363,12 +356,11 @@ export default function UserLayout() {
                   key={idx}
                   to={item.path}
                   onClick={toggleMobileMenu}
-                  className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden
-                    ${
-                      isActive
-                        ? "bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg"
-                        : "text-gray-700 hover:text-green-600 hover:bg-green-50"
-                    }`}
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden ${
+                    isActive
+                      ? "bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg"
+                      : "text-gray-700 hover:text-green-600 hover:bg-green-50"
+                  }`}
                 >
                   {isActive && (
                     <div className="absolute inset-0 bg-gradient-to-r from-green-600/90 to-green-700/90"></div>
@@ -410,14 +402,16 @@ export default function UserLayout() {
             </div>
 
             <div className="flex items-center space-x-6">
-              {/* Notifications Dropdown */}
+              {/* Notifications */}
               <div className="relative" ref={notificationRef}>
                 <button
-                  onClick={handleBellClick}
+                  onClick={() => {
+                    setNotificationOpen((prev) => !prev);
+                    if (!notificationOpen) setHasUnread(false);
+                  }}
                   className="p-2 rounded-lg hover:bg-green-50 transition-colors duration-200 text-gray-600 hover:text-green-600 relative"
                 >
                   <Bell size={20} />
-                  {/* 🔴 Red dot appears when unread */}
                   {hasUnread && (
                     <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
                   )}
@@ -465,7 +459,7 @@ export default function UserLayout() {
                 )}
               </div>
 
-              {/* Profile Dropdown (unchanged) */}
+              {/* Profile Dropdown */}
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -503,7 +497,7 @@ export default function UserLayout() {
           </div>
         </header>
 
-        {/* Outlet for child pages */}
+        {/* Main content */}
         <main className="flex-1 p-6 space-y-6 overflow-auto relative z-10">
           <Outlet context={{ user, transactions, budgets, goals, reports }} />
         </main>

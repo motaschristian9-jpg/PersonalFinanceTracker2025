@@ -1,15 +1,45 @@
 import React, { useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Settings, Moon, Globe, Bell, LogOut } from "lucide-react";
-import { useCurrency } from "../../context/CurrencyContext"; // ✅ Import context hook
+import { useCurrency } from "../../context/CurrencyContext";
+import { useUpdateCurrency } from "../../api/queries";
 
 const SettingsPage = () => {
-  const { currency, changeCurrency } = useCurrency(); // ✅ Only use currency code, not symbol
+  const { currency, changeCurrency } = useCurrency();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const { mutate: updateCurrency, isPending } = useUpdateCurrency();
+
+  const handleCurrencyChange = (newCurrency) => {
+    // 1. FIX: Call changeCurrency. (The function in CurrencyContext is now clean,
+    // without outdated storage writes.)
+    changeCurrency(newCurrency);
+
+    // 🗺️ Map currency code to its symbol
+    let newSymbol;
+    switch (newCurrency) {
+      case "PHP":
+        newSymbol = "₱";
+        break;
+      case "USD":
+        newSymbol = "$";
+        break;
+      case "EUR":
+        newSymbol = "€";
+        break;
+      case "GBP":
+        newSymbol = "£";
+        break;
+      default:
+        newSymbol = "₱"; // fallback just in case
+    }
+
+    // 2. Update backend with the new symbol
+    updateCurrency({ currency_symbol: newSymbol });
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 p-4 sm:p-6 lg:p-0">
-      {/* Page Header */}
+      {/* Page Header (No Change) */}
       <section className="relative">
         <div className="absolute -inset-1 bg-gradient-to-r from-purple-200/30 to-purple-300/20 rounded-2xl blur opacity-40"></div>
         <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-purple-100/50 p-4 sm:p-6 lg:p-8">
@@ -54,9 +84,10 @@ const SettingsPage = () => {
               </div>
 
               <select
-                value={currency} // ✅ Use currency code from context
-                onChange={(e) => changeCurrency(e.target.value)} // ✅ Updates global state
-                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white"
+                value={currency}
+                onChange={(e) => handleCurrencyChange(e.target.value)}
+                disabled={isPending}
+                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white disabled:opacity-50"
               >
                 <option value="PHP">Philippine Peso (₱)</option>
                 <option value="USD">US Dollar ($)</option>
@@ -93,7 +124,7 @@ const SettingsPage = () => {
         </div>
       </section>
 
-      {/* Logout Section */}
+      {/* Logout Section (Ignored/Left untouched as requested) */}
       <section className="relative">
         <div className="absolute -inset-1 bg-gradient-to-r from-red-200/30 to-red-300/20 rounded-xl blur opacity-40"></div>
         <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-red-100/50 p-4 sm:p-6">

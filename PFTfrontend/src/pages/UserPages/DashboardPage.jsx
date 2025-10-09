@@ -45,29 +45,38 @@ import { useCurrency } from "../../context/CurrencyContext";
 export default function Dashboard() {
   const queryClient = useQueryClient();
 
-  const { data: user } = useProfile();
-
-  const { data: transactions } = useTransactions();
-
-  const { data: budgets } = useBudgets();
-
-  const { data: goals } = useGoals();
-
-  const { data: reports } = useReports();
+  // Use the loading/data state from the API queries
+  const { data: user, isLoading: isUserLoading } = useProfile();
+  const { data: transactions = [], isLoading: isTransactionsLoading } =
+    useTransactions();
+  const { data: budgets = [], isLoading: isBudgetsLoading } = useBudgets();
+  const { data: goals = [], isLoading: isGoalsLoading } = useGoals();
+  const { data: reports, isLoading: isReportsLoading } = useReports();
 
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState("");
   const [formData, setFormData] = useState({});
-  const { symbol } = useCurrency();
 
+  // 🛑 FIX: Prevent rendering until core user data (and thus the correct symbol) is loaded
+  const isLoading =
+    isUserLoading ||
+    isReportsLoading ||
+    isTransactionsLoading ||
+    isBudgetsLoading ||
+    isGoalsLoading;
 
   // Savings goal modal states (only for viewing existing goals)
   const [savingsModalOpen, setSavingsModalOpen] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState(null);
 
+  const { symbol } = useCurrency(); // Get the currency symbol
+  console.log(symbol);
+
   const COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444"];
   const MAX_ITEMS = 9;
+
+  // The transactions dependency is now correctly initialized to []
   const budgetSpent = (budgetId) => {
     return transactions
       .filter((tx) => tx.budget_id === budgetId)
@@ -76,13 +85,12 @@ export default function Dashboard() {
 
   // ================= Mutations =================
   const addTransactionMutation = useAddTransaction();
-
   const addBudgetMutation = useAddBudget();
-
   const addGoalMutation = useAddGoal();
 
   // ================= Modal Handlers =================
   const handleOpenModal = (type) => {
+    // Note: budgets and goals are now guaranteed to be arrays (or [])
     if (
       (type === "budget" && budgets.length >= MAX_ITEMS) ||
       (type === "goal" && goals.length >= MAX_ITEMS)
@@ -182,6 +190,8 @@ export default function Dashboard() {
   };
 
   // ================= Chart Data =================
+
+  // Only calculate data if not loading to prevent errors from undefined data
   const expenseData = transactions
     .filter((t) => t.type?.toLowerCase() === "expense")
     .reduce((acc, tx) => {
@@ -201,7 +211,18 @@ export default function Dashboard() {
       ]
     : [];
 
-  // ================= Render =================
+  // ================= Loading State Render =================
+  if (isLoading) {
+    // This ensures the correct symbol is loaded before showing financial data
+    return (
+      <div className="flex justify-center items-center h-full min-h-[500px]">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-green-500"></div>
+        <p className="ml-4 text-lg text-gray-600">Loading Dashboard...</p>
+      </div>
+    );
+  }
+
+  // ================= Main Render =================
   return (
     <div className="space-y-8">
       {/* Welcome Section */}
@@ -246,7 +267,8 @@ export default function Dashboard() {
                   Total Income
                 </h3>
                 <p className="text-2xl font-bold text-green-600">
-                  {symbol}{Number(reports?.totalIncome || 0).toFixed(2)}
+                  {symbol}
+                  {Number(reports?.totalIncome || 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -265,7 +287,8 @@ export default function Dashboard() {
                   Total Expenses
                 </h3>
                 <p className="text-2xl font-bold text-red-500">
-                  {symbol}{Number(reports?.totalExpenses || 0).toFixed(2)}
+                  {symbol}
+                  {Number(reports?.totalExpenses || 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -284,7 +307,8 @@ export default function Dashboard() {
                   Net Savings
                 </h3>
                 <p className="text-2xl font-bold text-gray-800">
-                  {symbol}{Number(reports?.balance || 0).toFixed(2)}
+                  {symbol}
+                  {Number(reports?.balance || 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -418,23 +442,32 @@ export default function Dashboard() {
       />
 
       {/* Savings Goal Modal (View Only) */}
-      {savingsModalOpen && (
-        <SavingsCardModal
-          goal={selectedGoal}
-          onClose={() => {
-            setSavingsModalOpen(false);
-            setSelectedGoal(null);
-          }}
-          onAddSavings={(savingsData) => {
-            // Handle adding savings to existing goal
-            console.log("Adding savings:", savingsData);
-            // You would implement the actual API call here
-            return true; // Return success/failure
-          }}
-          transactions={[]} // Pass goal-specific transactions here
-          currentSaved={selectedGoal?.current_amount || 0}
-        />
-      )}
+      {savingsModalOpen &&
+        selectedGoal && ( // Added check for selectedGoal
+          <SavingsCardModal
+            goal={selectedGoal}
+            onClose={() => {
+              setSavingsModalOpen(false);
+              setSelectedGoal(null);
+            }}
+            onAddSavings={(savingsData) => {
+              // Handle adding savings to existing goal
+              console.log("Adding savings:", savingsData);
+              // You would implement the actual API call here
+              return true; // Return success/failure
+            }}
+            // Pass goal-specific transactions here if available, otherwise an empty array
+            transactions={
+              selectedGoal.contributions
+                ? selectedGoal.contributions.map((c) => ({
+                    ...c,
+                    type: "contribution",
+                  }))
+                : []
+            }
+            currentSaved={selectedGoal?.current_amount || 0} // Ensure currentSaved is passed
+          />
+        )}
 
       {/* Recent Transactions */}
       <section className="relative">
@@ -474,12 +507,13 @@ export default function Dashboard() {
                       </td>
                       <td className="py-3 font-medium">{tx.category}</td>
                       <td className="py-3 font-bold">
-                        {symbol}{Number(tx.amount).toFixed(2)}
+                        {symbol}
+                        {Number(tx.amount).toFixed(2)}
                       </td>
                       <td className="py-3">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            tx.type === "income"
+                            tx.type?.toLowerCase() === "income"
                               ? "bg-green-100 text-green-800"
                               : "bg-red-100 text-red-800"
                           }`}
@@ -538,7 +572,10 @@ export default function Dashboard() {
                   return (
                     <div
                       key={g.goal_id || `goal-${index}`}
-                      className="space-y-2 hover:bg-purple-50/50 p-3 rounded-lg transition-colors"
+                      className="space-y-2 hover:bg-purple-50/50 p-3 rounded-lg transition-colors cursor-pointer" // Added cursor-pointer
+                      onClick={() =>
+                        handleViewGoal({ ...g, current_amount: currentAmount })
+                      } // Pass full data to modal
                     >
                       <div className="flex justify-between items-center">
                         <span className="font-medium text-gray-800">
@@ -557,7 +594,8 @@ export default function Dashboard() {
                       </div>
 
                       <p className="text-sm text-gray-600">
-                        {symbol}{currentAmount.toFixed(2)} of {symbol}
+                        {symbol}
+                        {currentAmount.toFixed(2)} of {symbol}
                         {Number(g.target_amount || 0).toFixed(2)}
                       </p>
                     </div>
@@ -622,7 +660,8 @@ export default function Dashboard() {
                       </div>
 
                       <p className="text-sm text-gray-600">
-                        {symbol}{Number(spent || 0).toFixed(2)} of {symbol}
+                        {symbol}
+                        {Number(spent || 0).toFixed(2)} of {symbol}
                         {Number(b.amount || 0).toFixed(2)} spent
                       </p>
                     </div>

@@ -4,7 +4,6 @@ import {
   MinusCircle,
   Edit,
   Trash2,
-  Loader2,
   Search,
   Filter,
   Receipt,
@@ -13,8 +12,6 @@ import {
   Wallet,
   Calendar,
   Tag,
-  FileText,
-  DollarSign,
 } from "lucide-react";
 import ModalForm from "../../components/ModalForm";
 import Swal from "sweetalert2";

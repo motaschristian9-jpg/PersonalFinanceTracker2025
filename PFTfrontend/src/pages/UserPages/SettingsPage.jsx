@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { Button } from "../../components/ui/button";
-import { Settings, Moon, Globe, Bell, LogOut } from "lucide-react";
+import { useState } from "react";
+import { Button } from "../../components/ui/Button";
+import { Settings, Moon, Globe, LogOut } from "lucide-react";
 import { useCurrency } from "../../context/CurrencyContext";
 import { useUpdateCurrency } from "../../api/queries";
 import { useQueryClient } from "@tanstack/react-query";

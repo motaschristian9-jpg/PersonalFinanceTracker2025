@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Shield } from "lucide-react";
 import Swal from "sweetalert2";
 import ChangePasswordModal from "../../components/ChangePasswordModal"; // Import the modal

@@ -8,15 +8,11 @@ import {
   Line,
   XAxis,
   YAxis,
-  Tooltip,
-  BarChart,
-  Bar,
   Legend,
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
 import {
-  Download,
   TrendingUp,
   TrendingDown,
   DollarSign,

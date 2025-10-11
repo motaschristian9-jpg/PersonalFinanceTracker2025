@@ -1,8 +1,7 @@
 // src/pages/UserPages/IncomePage.jsx
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import Swal from "sweetalert2";
-import DashboardLayout from "../../layouts/UserLayout";
 import {
   Plus,
   Filter,
@@ -19,12 +18,6 @@ import {
 } from "lucide-react";
 import ModalForm from "../../components/ModalForm";
 import { exportIncomeReport } from "../../utils/exportUtils";
-import {
-  fetchTransactions,
-  addTransaction,
-  updateTransaction,
-  deleteTransaction,
-} from "../../api/api";
 import {
   useAddTransaction,
   useDeleteTransaction,

@@ -1,27 +1,16 @@
-import { useState, useEffect, useMemo } from "react";
-import { Button } from "../../components/ui/button";
+import { useState, useMemo } from "react";
 import ModalForm from "../../components/ModalForm";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "../../components/ui/card";
-import { Progress } from "../../components/ui/progress";
+
 import {
   Plus,
-  Edit,
   Trash2,
-  Download,
   Target,
   Calendar,
   DollarSign,
   TrendingUp,
-  TrendingDown,
   Eye,
   AlertCircle,
   CheckCircle,
-  Trophy,
   Clock,
 } from "lucide-react";
 import {
@@ -39,7 +28,7 @@ import {
 } from "recharts";
 import SavingsCardModal from "../../components/SavingsCardModal";
 import Swal from "sweetalert2";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useAddGoal,
   useUpdateGoal,

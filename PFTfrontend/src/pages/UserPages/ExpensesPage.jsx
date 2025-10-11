@@ -1,8 +1,7 @@
 // src/pages/UserPages/ExpensesPage.jsx
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import Swal from "sweetalert2";
-import DashboardLayout from "../../layouts/UserLayout";
 import {
   Minus,
   Filter,

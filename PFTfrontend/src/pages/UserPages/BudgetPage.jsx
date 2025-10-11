@@ -1,8 +1,5 @@
 // src/pages/UserPages/BudgetsPage.jsx
 import { useState, useMemo } from "react";
-import { Card } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
-import { Progress } from "../../components/ui/progress";
 import {
   PieChart,
   Pie,
@@ -19,13 +16,10 @@ import {
 import {
   Plus,
   Trash2,
-  Target,
   Calendar,
   DollarSign,
-  TrendingUp,
   TrendingDown,
   Eye,
-  Edit,
   AlertCircle,
   CheckCircle,
   Clock,

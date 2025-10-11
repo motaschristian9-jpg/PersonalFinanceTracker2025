@@ -21,6 +21,7 @@ export default function BudgetModal({
   onAddExpense,
   onDeleteTransaction,
   onDeleteBudget,
+  isLoading = false,
 }) {
   const [localBudget, setLocalBudget] = useState(
     budget || { allocated: 0, spent: 0, description: "" }
@@ -56,7 +57,23 @@ export default function BudgetModal({
 
   if (!budget) return null;
 
+  // ========== VALIDATION LOGIC ==========
+  const isEditFormValid = () => {
+    return !!(
+      allocatedInput &&
+      Number(allocatedInput) > 0 &&
+      localBudget.start_date &&
+      localBudget.end_date
+    );
+  };
+
+  const isExpenseFormValid = () => {
+    return !!(expenseAmount && Number(expenseAmount) > 0);
+  };
+
   const handleSaveChanges = async () => {
+    if (!isEditFormValid()) return;
+
     await onEditBudget({
       ...localBudget,
       allocated: Number(allocatedInput) || 0,
@@ -66,7 +83,7 @@ export default function BudgetModal({
   };
 
   const handleAddExpense = async () => {
-    if (!expenseAmount || Number(expenseAmount) <= 0) return;
+    if (!isExpenseFormValid()) return;
 
     const remainingAmount =
       Number(localBudget.amount || 0) - Number(localBudget.spent || 0);
@@ -208,7 +225,8 @@ export default function BudgetModal({
                             Allocated
                           </p>
                           <p className="text-lg font-bold text-blue-700">
-                            {symbol}{Number(localBudget.amount || 0).toLocaleString()}
+                            {symbol}
+                            {Number(localBudget.amount || 0).toLocaleString()}
                           </p>
                         </div>
                         <div className="bg-red-50 rounded-lg p-4 text-center">
@@ -216,7 +234,8 @@ export default function BudgetModal({
                             Spent
                           </p>
                           <p className="text-lg font-bold text-red-700">
-                            {symbol}{Number(localBudget.spent || 0).toLocaleString()}
+                            {symbol}
+                            {Number(localBudget.spent || 0).toLocaleString()}
                           </p>
                         </div>
                         <div className="bg-green-50 rounded-lg p-4 text-center">
@@ -224,7 +243,8 @@ export default function BudgetModal({
                             Remaining
                           </p>
                           <p className="text-lg font-bold text-green-700">
-                            {symbol}{remaining.toLocaleString()}
+                            {symbol}
+                            {remaining.toLocaleString()}
                           </p>
                         </div>
                       </div>
@@ -246,12 +266,15 @@ export default function BudgetModal({
                       {/* Allocated Amount */}
                       <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700">
-                          Allocated Amount
+                          Allocated Amount{" "}
+                          <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="number"
                           value={allocatedInput}
                           onChange={(e) => setAllocatedInput(e.target.value)}
+                          min="0"
+                          step="0.01"
                           className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                           placeholder="Enter allocated amount"
                         />
@@ -275,7 +298,7 @@ export default function BudgetModal({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <label className="block text-sm font-medium text-gray-700">
-                            Start Date
+                            Start Date <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="date"
@@ -291,7 +314,7 @@ export default function BudgetModal({
                         </div>
                         <div className="space-y-2">
                           <label className="block text-sm font-medium text-gray-700">
-                            End Date
+                            End Date <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="date"
@@ -310,7 +333,12 @@ export default function BudgetModal({
                       {/* Save Button */}
                       <button
                         onClick={handleSaveChanges}
-                        className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg hover:shadow-lg transition-all duration-300 font-medium"
+                        disabled={!isEditFormValid()}
+                        className={`w-full py-3 rounded-lg font-medium transition-all duration-300 ${
+                          !isEditFormValid()
+                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                            : "bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:shadow-lg"
+                        }`}
                       >
                         Save Changes
                       </button>
@@ -332,11 +360,18 @@ export default function BudgetModal({
                         placeholder="Enter expense amount"
                         value={expenseAmount}
                         onChange={(e) => setExpenseAmount(e.target.value)}
+                        min="0"
+                        step="0.01"
                         className="flex-1 px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
                       />
                       <button
                         onClick={handleAddExpense}
-                        className="px-4 sm:px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:shadow-lg transition-all duration-300 flex items-center justify-center space-x-2 font-medium"
+                        disabled={!isExpenseFormValid()}
+                        className={`px-4 sm:px-6 py-3 rounded-lg flex items-center justify-center space-x-2 font-medium transition-all duration-300 ${
+                          !isExpenseFormValid()
+                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                            : "bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:shadow-lg"
+                        }`}
                       >
                         <Plus size={16} />
                         <span>Add Expense</span>
@@ -358,7 +393,25 @@ export default function BudgetModal({
                   </h3>
 
                   <div className="flex-1 overflow-y-auto">
-                    {transactions.length === 0 ? (
+                    {isLoading ? (
+                      <div className="space-y-3">
+                        {[...Array(5)].map((_, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100 animate-pulse"
+                          >
+                            <div className="flex items-center space-x-3 flex-1">
+                              <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                              <div className="flex-1">
+                                <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
+                                <div className="h-3 bg-gray-200 rounded w-20"></div>
+                              </div>
+                            </div>
+                            <div className="w-8 h-8 bg-gray-200 rounded-lg"></div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : transactions.length === 0 ? (
                       <div className="text-center py-8">
                         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                           <Calendar className="text-gray-400" size={24} />

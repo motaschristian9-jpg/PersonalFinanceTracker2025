@@ -2,6 +2,32 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { Link, useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrency } from "../context/CurrencyContext";
+
+// Add custom scrollbar styles
+const scrollbarStyles = `
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 3px;
+    transition: background 0.2s ease;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #22c55e;
+  }
+  
+  .custom-scrollbar {
+    scrollbar-color: #d1d5db transparent;
+    scrollbar-width: thin;
+  }
+`;
 import {
   LayoutDashboard,
   List,
@@ -31,6 +57,14 @@ export default function UserLayout() {
   const { resetCurrency } = useCurrency();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Inject custom scrollbar styles
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.textContent = scrollbarStyles;
+    document.head.appendChild(style);
+    return () => document.head.removeChild(style);
+  }, []);
 
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     const saved = localStorage.getItem("sidebarOpen");
@@ -62,18 +96,15 @@ export default function UserLayout() {
 
   // --- Handle Logout ---
   const handleLogout = () => {
-    // 1. Aggressively remove all possible user/token storage
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     sessionStorage.removeItem("token");
     sessionStorage.removeItem("user");
 
-    // 2. Clear application state (Context and React Query Cache)
     resetCurrency();
     queryClient.clear();
 
-    // 3. 💥 FIX: Navigate IMMEDIATELY to prevent stale data flashing
-    window.location.href = '/login';
+    window.location.href = "/login";
   };
 
   // --- Sidebar toggles ---
@@ -180,23 +211,55 @@ export default function UserLayout() {
       setNotifications(generatedNotifications);
       setHasUnread(generatedNotifications.length > 0);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [generatedNotifications]);
 
-  // --- Menu Items ---
-  const menuItems = [
+  // --- Grouped Menu Items ---
+  const menuGroups = [
     {
-      label: "Dashboard",
-      icon: <LayoutDashboard size={20} />,
-      path: "/dashboard",
+      title: "Overview",
+      items: [
+        {
+          label: "Dashboard",
+          icon: <LayoutDashboard size={20} />,
+          path: "/dashboard",
+        },
+      ],
     },
-    { label: "Transactions", icon: <List size={20} />, path: "/transactions" },
-    { label: "Income", icon: <DollarSign size={20} />, path: "/income" },
-    { label: "Expenses", icon: <CreditCard size={20} />, path: "/expenses" },
-    { label: "Budgets", icon: <PieChart size={20} />, path: "/budgets" },
-    { label: "Savings", icon: <Target size={20} />, path: "/savings" },
-    { label: "Reports", icon: <BarChart2 size={20} />, path: "/reports" },
-    { label: "Settings", icon: <Settings size={20} />, path: "/settings" },
+    {
+      title: "Tracking",
+      items: [
+        {
+          label: "Transactions",
+          icon: <List size={20} />,
+          path: "/transactions",
+        },
+        { label: "Income", icon: <DollarSign size={20} />, path: "/income" },
+        {
+          label: "Expenses",
+          icon: <CreditCard size={20} />,
+          path: "/expenses",
+        },
+      ],
+    },
+    {
+      title: "Management",
+      items: [
+        { label: "Budgets", icon: <PieChart size={20} />, path: "/budgets" },
+        { label: "Savings", icon: <Target size={20} />, path: "/savings" },
+      ],
+    },
+    {
+      title: "Insights",
+      items: [
+        { label: "Reports", icon: <BarChart2 size={20} />, path: "/reports" },
+      ],
+    },
+    {
+      title: "System",
+      items: [
+        { label: "Settings", icon: <Settings size={20} />, path: "/settings" },
+      ],
+    },
   ];
 
   // --- Loading Screen ---
@@ -277,51 +340,64 @@ export default function UserLayout() {
               )}
             </div>
 
-            {/* Navigation */}
-            <nav className="space-y-2">
-              {menuItems.map((item, idx) => {
-                const isActive = location.pathname === item.path;
-                return (
-                  <Link
-                    key={idx}
-                    to={item.path}
-                    className={`group flex items-center ${
-                      sidebarOpen ? "space-x-3 px-4" : "justify-center px-3"
-                    } py-3 rounded-xl transition-all duration-200 relative overflow-hidden ${
-                      isActive
-                        ? "bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg"
-                        : "text-gray-700 hover:text-green-600 hover:bg-green-50"
-                    }`}
-                  >
-                    {isActive && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-green-600/90 to-green-700/90"></div>
-                    )}
-                    <div
-                      className={`relative z-10 flex items-center ${
-                        sidebarOpen ? "space-x-3" : ""
-                      }`}
-                    >
-                      <div className={`${isActive ? "text-white" : ""}`}>
-                        {item.icon}
-                      </div>
-                      {sidebarOpen && (
-                        <span
-                          className={`font-medium ${
-                            isActive ? "text-white" : ""
+            {/* Navigation Groups */}
+            <nav className="space-y-6 overflow-y-auto h-[calc(100vh-140px)] custom-scrollbar">
+              {menuGroups.map((group, groupIdx) => (
+                <div key={groupIdx}>
+                  {sidebarOpen && (
+                    <h3 className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      {group.title}
+                    </h3>
+                  )}
+                  <div className="space-y-2">
+                    {group.items.map((item, itemIdx) => {
+                      const isActive = location.pathname === item.path;
+                      return (
+                        <Link
+                          key={itemIdx}
+                          to={item.path}
+                          className={`group flex items-center ${
+                            sidebarOpen
+                              ? "space-x-3 px-4"
+                              : "justify-center px-3"
+                          } py-3 rounded-xl transition-all duration-200 relative overflow-hidden ${
+                            isActive
+                              ? "bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg"
+                              : "text-gray-700 hover:text-green-600 hover:bg-green-50"
                           }`}
                         >
-                          {item.label}
-                        </span>
-                      )}
-                    </div>
-                    {!sidebarOpen && (
-                      <div className="absolute left-16 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
-                        {item.label}
-                      </div>
-                    )}
-                  </Link>
-                );
-              })}
+                          {isActive && (
+                            <div className="absolute inset-0 bg-gradient-to-r from-green-600/90 to-green-700/90"></div>
+                          )}
+                          <div
+                            className={`relative z-10 flex items-center ${
+                              sidebarOpen ? "space-x-3" : ""
+                            }`}
+                          >
+                            <div className={`${isActive ? "text-white" : ""}`}>
+                              {item.icon}
+                            </div>
+                            {sidebarOpen && (
+                              <span
+                                className={`font-medium ${
+                                  isActive ? "text-white" : ""
+                                }`}
+                              >
+                                {item.label}
+                              </span>
+                            )}
+                          </div>
+                          {!sidebarOpen && (
+                            <div className="absolute left-16 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+                              {item.label}
+                            </div>
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </nav>
           </div>
         </div>
@@ -347,37 +423,48 @@ export default function UserLayout() {
             </button>
           </div>
 
-          {/* Mobile Navigation */}
-          <nav className="space-y-2">
-            {menuItems.map((item, idx) => {
-              const isActive = location.pathname === item.path;
-              return (
-                <Link
-                  key={idx}
-                  to={item.path}
-                  onClick={toggleMobileMenu}
-                  className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden ${
-                    isActive
-                      ? "bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg"
-                      : "text-gray-700 hover:text-green-600 hover:bg-green-50"
-                  }`}
-                >
-                  {isActive && (
-                    <div className="absolute inset-0 bg-gradient-to-r from-green-600/90 to-green-700/90"></div>
-                  )}
-                  <div className="relative z-10 flex items-center space-x-3">
-                    <div className={`${isActive ? "text-white" : ""}`}>
-                      {item.icon}
-                    </div>
-                    <span
-                      className={`font-medium ${isActive ? "text-white" : ""}`}
-                    >
-                      {item.label}
-                    </span>
-                  </div>
-                </Link>
-              );
-            })}
+          {/* Mobile Navigation Groups */}
+          <nav className="space-y-6 overflow-y-auto h-[calc(100vh-140px)] custom-scrollbar">
+            {menuGroups.map((group, groupIdx) => (
+              <div key={groupIdx}>
+                <h3 className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  {group.title}
+                </h3>
+                <div className="space-y-2">
+                  {group.items.map((item, itemIdx) => {
+                    const isActive = location.pathname === item.path;
+                    return (
+                      <Link
+                        key={itemIdx}
+                        to={item.path}
+                        onClick={toggleMobileMenu}
+                        className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden ${
+                          isActive
+                            ? "bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg"
+                            : "text-gray-700 hover:text-green-600 hover:bg-green-50"
+                        }`}
+                      >
+                        {isActive && (
+                          <div className="absolute inset-0 bg-gradient-to-r from-green-600/90 to-green-700/90"></div>
+                        )}
+                        <div className="relative z-10 flex items-center space-x-3">
+                          <div className={`${isActive ? "text-white" : ""}`}>
+                            {item.icon}
+                          </div>
+                          <span
+                            className={`font-medium ${
+                              isActive ? "text-white" : ""
+                            }`}
+                          >
+                            {item.label}
+                          </span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </nav>
         </div>
       </aside>

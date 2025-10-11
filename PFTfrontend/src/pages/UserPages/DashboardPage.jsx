@@ -46,25 +46,16 @@ export default function Dashboard() {
   const queryClient = useQueryClient();
 
   // Use the loading/data state from the API queries
-  const { data: user, isLoading: isUserLoading } = useProfile();
-  const { data: transactions = [], isLoading: isTransactionsLoading } =
-    useTransactions();
-  const { data: budgets = [], isLoading: isBudgetsLoading } = useBudgets();
-  const { data: goals = [], isLoading: isGoalsLoading } = useGoals();
-  const { data: reports, isLoading: isReportsLoading } = useReports();
+  const { data: user } = useProfile();
+  const { data: transactions = [] } = useTransactions();
+  const { data: budgets = [] } = useBudgets();
+  const { data: goals = [] } = useGoals();
+  const { data: reports } = useReports();
 
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState("");
   const [formData, setFormData] = useState({});
-
-  // 🛑 FIX: Prevent rendering until core user data (and thus the correct symbol) is loaded
-  const isLoading =
-    isUserLoading ||
-    isReportsLoading ||
-    isTransactionsLoading ||
-    isBudgetsLoading ||
-    isGoalsLoading;
 
   // Savings goal modal states (only for viewing existing goals)
   const [savingsModalOpen, setSavingsModalOpen] = useState(false);
@@ -81,6 +72,35 @@ export default function Dashboard() {
       .filter((tx) => tx.budget_id === budgetId)
       .reduce((sum, tx) => sum + Number(tx.amount), 0);
   };
+
+  const totalIncome = transactions
+    .filter((t) => t.type?.toLowerCase() === "income")
+    .reduce((acc, t) => acc + Number(t.amount), 0);
+
+  const totalExpenses = transactions
+    .filter((t) => t.type?.toLowerCase() === "expense")
+    .reduce((acc, t) => acc + Number(t.amount), 0);
+
+  const netBalance = totalIncome - totalExpenses;
+
+  // Sum of all target amounts
+  const totalTarget = goals.reduce(
+    (acc, goal) => acc + Number(goal.target_amount || 0),
+    0
+  );
+
+  // Sum of all contributions from all goals
+  const totalSaved = goals.reduce((acc, goal) => {
+    const goalTotal = (goal.contributions || []).reduce(
+      (sum, c) => sum + Number(c.amount || 0),
+      0
+    );
+    return acc + goalTotal;
+  }, 0);
+
+  // Compute savings progress
+  const savingsProgress =
+    totalTarget > 0 ? Math.round((totalSaved / totalTarget) * 100) : 0;
 
   // ================= Mutations =================
   const addTransactionMutation = useAddTransaction();
@@ -138,6 +158,9 @@ export default function Dashboard() {
 
         await addTransactionMutation.mutateAsync(txData);
         message = modalType === "income" ? "Income added!" : "Expense added!";
+
+        // ✅ Invalidate both transactions AND reports
+        queryClient.invalidateQueries(["transactions"]);
       } else if (modalType === "budget") {
         const budgetData = {
           category: data.category,
@@ -149,6 +172,9 @@ export default function Dashboard() {
 
         await addBudgetMutation.mutateAsync(budgetData);
         message = "Budget set!";
+
+        // ✅ Invalidate budgets
+        queryClient.invalidateQueries(["budgets"]);
       } else if (modalType === "goal") {
         const goalData = {
           title: data.title,
@@ -160,7 +186,8 @@ export default function Dashboard() {
         await addGoalMutation.mutateAsync(goalData);
         message = "Savings goal created!";
 
-        queryClient.invalidateQueries(["goals", "reports"]);
+        // ✅ Invalidate both goals AND reports
+        queryClient.invalidateQueries(["goals"]);
       }
 
       handleCloseModal();
@@ -183,10 +210,6 @@ export default function Dashboard() {
   };
 
   // ================= View Goal Handler =================
-  const handleViewGoal = (goal) => {
-    setSelectedGoal(goal);
-    setSavingsModalOpen(true);
-  };
 
   // ================= Chart Data =================
 
@@ -200,26 +223,15 @@ export default function Dashboard() {
       return acc;
     }, []);
 
-  const incomeExpenseData = reports
+  const incomeExpenseData = transactions
     ? [
         {
           month: new Date().toLocaleString("default", { month: "long" }),
-          income: reports.totalIncome,
-          expenses: reports.totalExpenses,
+          income: totalIncome,
+          expenses: totalExpenses,
         },
       ]
     : [];
-
-  // ================= Loading State Render =================
-  if (isLoading) {
-    // This ensures the correct symbol is loaded before showing financial data
-    return (
-      <div className="flex justify-center items-center h-full min-h-[500px]">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-green-500"></div>
-        <p className="ml-4 text-lg text-gray-600">Loading Dashboard...</p>
-      </div>
-    );
-  }
 
   // ================= Main Render =================
   return (
@@ -267,7 +279,7 @@ export default function Dashboard() {
                 </h3>
                 <p className="text-2xl font-bold text-green-600">
                   {symbol}
-                  {Number(reports?.totalIncome || 0).toFixed(2)}
+                  {Number(totalIncome || 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -287,7 +299,7 @@ export default function Dashboard() {
                 </h3>
                 <p className="text-2xl font-bold text-red-500">
                   {symbol}
-                  {Number(reports?.totalExpenses || 0).toFixed(2)}
+                  {Number(totalExpenses || 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -307,7 +319,7 @@ export default function Dashboard() {
                 </h3>
                 <p className="text-2xl font-bold text-gray-800">
                   {symbol}
-                  {Number(reports?.balance || 0).toFixed(2)}
+                  {Number(netBalance || 0).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -326,8 +338,8 @@ export default function Dashboard() {
                   Savings Progress
                 </h3>
                 <p className="text-2xl font-bold text-gray-800">
-                  {reports?.savingsProgress
-                    ? `${reports.savingsProgress}%`
+                  {savingsProgress
+                    ? `${savingsProgress}%`
                     : "0%"}
                 </p>
               </div>
@@ -399,28 +411,28 @@ export default function Dashboard() {
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <button
-              className="flex items-center justify-center space-x-3 px-6 py-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300"
+              className="flex items-center justify-center space-x-3 px-6 py-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
               onClick={() => handleOpenModal("income")}
             >
               <PlusCircle size={20} />
               <span className="font-medium">Add Income</span>
             </button>
             <button
-              className="flex items-center justify-center space-x-3 px-6 py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300"
+              className="flex items-center justify-center space-x-3 px-6 py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
               onClick={() => handleOpenModal("expense")}
             >
               <MinusCircle size={20} />
               <span className="font-medium">Add Expense</span>
             </button>
             <button
-              className="flex items-center justify-center space-x-3 px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300"
+              className="flex items-center justify-center space-x-3 px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
               onClick={() => handleOpenModal("budget")}
             >
               <PieChart size={20} />
               <span className="font-medium">Add Budget</span>
             </button>
             <button
-              className="flex items-center justify-center space-x-3 px-6 py-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300"
+              className="flex items-center justify-center space-x-3 px-6 py-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
               onClick={() => handleOpenModal("goal")}
             >
               <Target size={20} />
@@ -439,35 +451,7 @@ export default function Dashboard() {
         onClose={handleCloseModal}
         onSubmit={handleSubmit}
       />
-
-      {/* Savings Goal Modal (View Only) */}
-      {savingsModalOpen &&
-        selectedGoal && ( // Added check for selectedGoal
-          <SavingsCardModal
-            goal={selectedGoal}
-            onClose={() => {
-              setSavingsModalOpen(false);
-              setSelectedGoal(null);
-            }}
-            onAddSavings={(savingsData) => {
-              // Handle adding savings to existing goal
-              console.log("Adding savings:", savingsData);
-              // You would implement the actual API call here
-              return true; // Return success/failure
-            }}
-            // Pass goal-specific transactions here if available, otherwise an empty array
-            transactions={
-              selectedGoal.contributions
-                ? selectedGoal.contributions.map((c) => ({
-                    ...c,
-                    type: "contribution",
-                  }))
-                : []
-            }
-            currentSaved={selectedGoal?.current_amount || 0} // Ensure currentSaved is passed
-          />
-        )}
-
+     
       {/* Recent Transactions */}
       <section className="relative">
         <div className="absolute -inset-1 bg-gradient-to-r from-green-200/30 to-green-300/20 rounded-2xl blur opacity-40"></div>
@@ -571,10 +555,7 @@ export default function Dashboard() {
                   return (
                     <div
                       key={g.goal_id || `goal-${index}`}
-                      className="space-y-2 hover:bg-purple-50/50 p-3 rounded-lg transition-colors cursor-pointer" // Added cursor-pointer
-                      onClick={() =>
-                        handleViewGoal({ ...g, current_amount: currentAmount })
-                      } // Pass full data to modal
+                      className="space-y-2 hover:bg-purple-50/50 p-3 rounded-lg transition-colors"
                     >
                       <div className="flex justify-between items-center">
                         <span className="font-medium text-gray-800">

@@ -74,7 +74,7 @@ export default function SavingsPage() {
 
   const addContributionMutation = useAddContribution();
 
-  const deleteTransactionMutation = useDeleteContribution();
+  const deleteContributionMutation = useDeleteContribution();
 
   // Helper functions
   const getStatus = (goal) => {
@@ -124,26 +124,35 @@ export default function SavingsPage() {
 
   // Handlers
 
+  
   const handleDeleteTransaction = async (transaction) => {
     console.log("Deleting transaction:", transaction);
+
     const result = await Swal.fire({
-      title: `Delete this transaction?`,
+      title: "Delete this transaction?",
       text: "This action cannot be undone.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#EF4444",
       cancelButtonColor: "#6B7280",
       confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
     });
 
-    if (result.isConfirmed) {
+    // Log result to inspect behavior
+    console.log("Swal result:", result);
+
+    // Proceed only if the user confirmed
+    if (result.isConfirmed || result.value) {
       try {
-        await deleteTransactionMutation.mutateAsync(transaction.id);
+        await deleteContributionMutation.mutateAsync(transaction.id);
         Swal.fire("Deleted!", "The transaction has been deleted.", "success");
       } catch (error) {
-        console.log(error);
+        console.error(error);
         Swal.fire("Error!", "Could not delete transaction.", "error");
       }
+    } else if (result.isDismissed) {
+      Swal.fire("Cancelled", "The transaction was not deleted.", "info");
     }
   };
 

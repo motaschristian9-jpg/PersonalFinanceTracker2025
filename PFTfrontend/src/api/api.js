@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Axios instance
 const api = axios.create({
-  baseURL: "http://127.0.0.1:8000/api", // Laravel API base
+  baseURL: "http://192.168.1.15:8000/api", // Laravel API base
   headers: {
     "Content-Type": "application/json",
   },

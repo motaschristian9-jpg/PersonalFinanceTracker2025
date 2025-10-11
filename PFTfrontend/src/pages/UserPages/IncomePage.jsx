@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Swal from "sweetalert2";
-import { useOutletContext } from "react-router-dom";
 import DashboardLayout from "../../layouts/UserLayout";
 import {
   Plus,
@@ -30,13 +29,14 @@ import {
   useAddTransaction,
   useDeleteTransaction,
   useUpdateTransaction,
+  useTransactions,
 } from "../../api/queries";
 
 import { useCurrency } from "../../context/CurrencyContext";
 
 export default function IncomePage() {
   const queryClient = useQueryClient();
-  const { user, transactions, budgets, goals, reports } = useOutletContext();
+  const { data: transactions } = useTransactions();
   const { symbol } = useCurrency();
 
   // Modal state
@@ -85,20 +85,31 @@ export default function IncomePage() {
     setModalOpen(true);
   };
 
-  const handleDelete = async (id) => {
-    const confirm = await Swal.fire({
+  const handleDelete = (txId) => {
+    Swal.fire({
       title: "Are you sure?",
-      text: "This will permanently delete the income record.",
+      text: "This transaction will be deleted permanently!",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#EF4444",
-      cancelButtonColor: "#6B7280",
+      cancelButtonColor: "#10B981",
       confirmButtonText: "Yes, delete it!",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        deleteTransactionMutation.mutate(txId, {
+          onSuccess: () => {
+            Swal.fire("Deleted!", "Transaction has been deleted.", "success");
+          },
+          onError: (error) => {
+            Swal.fire(
+              "Error!",
+              error.response?.data?.message || "Failed to delete transaction.",
+              "error"
+            );
+          },
+        });
+      }
     });
-    if (confirm.isConfirmed) {
-      await deleteTransactionMutation.mutateAsync(id);
-      Swal.fire("Deleted!", "Income record has been deleted.", "success");
-    }
   };
 
   const handleSubmit = async (data) => {
@@ -111,13 +122,13 @@ export default function IncomePage() {
     };
 
     if (editingId) {
-      await updateTransactionMutation.mutateAsync({
+      await updateTransactionMutation.mutate({
         id: editingId,
         data: payload,
       });
       Swal.fire("Updated!", "Income updated successfully.", "success");
     } else {
-      await addTransactionMutation.mutateAsync(payload);
+      await addTransactionMutation.mutate(payload);
       Swal.fire("Added!", "New income record added.", "success");
     }
 
@@ -243,7 +254,8 @@ export default function IncomePage() {
                   Total Income
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-emerald-600">
-                  {symbol}{totalIncome.toLocaleString()}
+                  {symbol}
+                  {totalIncome.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -281,7 +293,8 @@ export default function IncomePage() {
                   Avg. Monthly
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-purple-600">
-                  {symbol}{avgMonthlyIncome.toFixed(2).toLocaleString()}
+                  {symbol}
+                  {avgMonthlyIncome.toFixed(2).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -415,7 +428,7 @@ export default function IncomePage() {
                       Date
                     </th>
                     <th className="py-4 px-6 font-semibold text-gray-700">
-                      Source/Category
+                      Category
                     </th>
                     <th className="py-4 px-6 font-semibold text-gray-700">
                       Description
@@ -463,20 +476,46 @@ export default function IncomePage() {
                         <td className="py-4 px-6 font-bold text-emerald-600">
                           <div className="flex items-center space-x-1">
                             <TrendingUp size={16} />
-                            <span>+{symbol}{Number(tx.amount).toLocaleString()}</span>
+                            <span>
+                              +{symbol}
+                              {Number(tx.amount).toLocaleString()}
+                            </span>
                           </div>
                         </td>
                         <td className="py-4 px-6 text-right">
                           <div className="flex items-center justify-end space-x-2">
                             <button
-                              className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                              className={`p-2 rounded-lg transition-colors flex items-center justify-center
+    ${
+      tx.transaction_id
+        ? "text-blue-500 hover:text-blue-700 hover:bg-blue-50 cursor-pointer"
+        : "text-gray-400 bg-gray-100 cursor-not-allowed"
+    }`}
+                              disabled={!tx.transaction_id}
                               onClick={() => handleEdit(tx)}
+                              title={
+                                !tx.transaction_id
+                                  ? "Transaction is still saving..."
+                                  : "Edit Transaction"
+                              }
                             >
                               <Edit size={16} />
                             </button>
+
                             <button
-                              className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                              className={`p-2 rounded-lg transition-colors flex items-center justify-center
+    ${
+      tx.transaction_id
+        ? "text-red-500 hover:text-red-700 hover:bg-red-50 cursor-pointer"
+        : "text-gray-400 bg-gray-100 cursor-not-allowed"
+    }`}
+                              disabled={!tx.transaction_id}
                               onClick={() => handleDelete(tx.transaction_id)}
+                              title={
+                                !tx.transaction_id
+                                  ? "Transaction is still saving..."
+                                  : "Delete Transaction"
+                              }
                             >
                               <Trash2 size={16} />
                             </button>
@@ -557,7 +596,8 @@ export default function IncomePage() {
                             </span>
                           </div>
                           <div className="text-lg font-bold text-emerald-600">
-                            +{symbol}{Number(tx.amount).toLocaleString()}
+                            +{symbol}
+                            {Number(tx.amount).toLocaleString()}
                           </div>
                         </div>
                       </div>

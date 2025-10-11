@@ -12,7 +12,6 @@ import {
   Trash2,
 } from "lucide-react";
 
-// Note: Ensure 'sweetalert2' and '../context/CurrencyContext' are installed/available
 import { useCurrency } from "../context/CurrencyContext";
 
 // Utility function to safely format dates for display
@@ -27,8 +26,6 @@ const formatDate = (dateString) => {
 // Utility function to format date for HTML input[type="date"]
 const formatInputDate = (isoString) => {
   if (!isoString) return "";
-  // Returns 'YYYY-MM-DD'
-  // Note: This utility is only for displaying the date in the HTML input field.
   return isoString.split("T")[0] || "";
 };
 
@@ -51,24 +48,43 @@ export default function SavingsCardModal({
   onDeleteGoal,
 }) {
   const { symbol } = useCurrency();
-  // Safe initial state declaration using optional chaining
   const [localGoal, setLocalGoal] = useState(goal);
   const [isEditing, setIsEditing] = useState(false);
   const [savingsAmount, setSavingsAmount] = useState("");
 
-  // Consolidated state for editing fields
+  // Start with empty fields for edit mode
   const [editFields, setEditFields] = useState({
-    title: goal?.title || "",
-    target_amount: goal?.target_amount?.toString() || "",
-    description: goal?.description || "",
-    deadline: formatInputDate(goal?.deadline),
+    title: "",
+    target_amount: "",
+    description: "",
+    deadline: "",
   });
 
   // =========================================================================
-  // EFFECTS & HOOKS (All hooks must be defined unconditionally here)
+  // VALIDATION LOGIC
   // =========================================================================
 
-  // FIX: Moved this useCallback here to ensure all hooks are called unconditionally
+  const isEditFormValid = () => {
+    return !!(
+      editFields.title.trim() &&
+      editFields.target_amount &&
+      Number(editFields.target_amount) > 0 &&
+      !isNaN(Number(editFields.target_amount))
+    );
+  };
+
+  const isSavingsAmountValid = () => {
+    return !!(
+      savingsAmount &&
+      Number(savingsAmount) > 0 &&
+      !isNaN(Number(savingsAmount))
+    );
+  };
+
+  // =========================================================================
+  // EFFECTS & HOOKS
+  // =========================================================================
+
   const handleEditFieldChange = useCallback(
     (field) => (e) => {
       setEditFields((prev) => ({ ...prev, [field]: e.target.value }));
@@ -76,17 +92,10 @@ export default function SavingsCardModal({
     []
   );
 
-  // Synchronize localGoal and editFields when the 'goal' prop changes (e.g., parent update)
+  // Only sync localGoal when goal prop changes
   useEffect(() => {
     if (!goal) return;
-
     setLocalGoal(goal);
-    setEditFields({
-      title: goal.title || "",
-      target_amount: goal.target_amount?.toString() || "",
-      description: goal.description || "",
-      deadline: formatInputDate(goal.deadline),
-    });
   }, [goal]);
 
   // Handle body scroll lock
@@ -110,11 +119,10 @@ export default function SavingsCardModal({
     };
   }, [onClose]);
 
-  // Now, the early return is safe because all hooks have been called above it.
   if (!goal) return null;
 
   // =========================================================================
-  // CALCULATIONS (using localGoal)
+  // CALCULATIONS
   // =========================================================================
 
   const targetAmount = Number(localGoal.target_amount) || 0;
@@ -136,36 +144,35 @@ export default function SavingsCardModal({
 
   const handleToggleEditing = () => {
     if (isEditing) {
-      // If canceling edit, revert inputs to current local goal values
+      // Clear fields when canceling edit
       setEditFields({
-        title: localGoal.title || "",
-        target_amount: localGoal.target_amount?.toString() || "",
-        description: localGoal.description || "",
-        deadline: formatInputDate(localGoal.deadline),
+        title: "",
+        target_amount: "",
+        description: "",
+        deadline: "",
+      });
+    } else {
+      // Clear fields when entering edit mode (start fresh)
+      setEditFields({
+        title: "",
+        target_amount: "",
+        description: "",
+        deadline: "",
       });
     }
     setIsEditing(!isEditing);
   };
 
   const handleSaveChanges = async () => {
-    const newTargetAmount = Number(editFields.target_amount);
+    if (!isEditFormValid()) return;
 
-    if (!editFields.title.trim()) {
-      Swal.fire({
-        icon: "warning",
-        title: "Missing Name",
-        text: "Please enter a name for your goal.",
-      });
-      return;
-    }
+    const newTargetAmount = Number(editFields.target_amount);
 
     const updatedGoal = {
       ...localGoal,
       title: editFields.title.trim(),
-      // Ensure target amount is a non-negative number
       target_amount: newTargetAmount >= 0 ? newTargetAmount : 0,
       description: editFields.description.trim(),
-      // Send the YYYY-MM-DD string directly, or null
       deadline: editFields.deadline || null,
     };
 
@@ -174,6 +181,12 @@ export default function SavingsCardModal({
     if (success !== false) {
       setLocalGoal(updatedGoal);
       setIsEditing(false);
+      setEditFields({
+        title: "",
+        target_amount: "",
+        description: "",
+        deadline: "",
+      });
 
       Swal.fire({
         icon: "success",
@@ -186,16 +199,9 @@ export default function SavingsCardModal({
   };
 
   const handleAddSavingsSubmit = async () => {
-    const amountToAdd = Number(savingsAmount);
+    if (!isSavingsAmountValid()) return;
 
-    if (amountToAdd <= 0 || isNaN(amountToAdd)) {
-      Swal.fire({
-        icon: "warning",
-        title: "Invalid Amount",
-        text: "Please enter a valid savings amount.",
-      });
-      return;
-    }
+    const amountToAdd = Number(savingsAmount);
 
     // Add a small buffer for floating point comparison
     if (amountToAdd > remainingAmount + 0.001) {
@@ -212,7 +218,6 @@ export default function SavingsCardModal({
 
     if (onAddSavings) {
       const newContribution = {
-        // Use a temp ID for optimistic update
         id: `temp-${Date.now()}`,
         goal_id: goal.goal_id || goal.id,
         amount: amountToAdd,
@@ -222,7 +227,6 @@ export default function SavingsCardModal({
       const success = await onAddSavings(newContribution);
 
       if (success !== false) {
-        // Optimistic update
         setLocalGoal((prev) => ({
           ...prev,
           contributions: [...(prev.contributions || []), newContribution],
@@ -247,15 +251,20 @@ export default function SavingsCardModal({
     const success = await onDeleteTransaction(contribution);
 
     if (success !== false) {
-      // Optimistic update: Remove the contribution from local state
-      setLocalGoal((prev) => ({
-        ...prev,
-        contributions: prev.contributions.filter(
-          (c) => (c.id || c.tempId) !== (contribution.id || contribution.tempId)
-        ),
-      }));
+      setLocalGoal((prev) => {
+        if (!prev) return prev;
 
-      Swal.fire({
+        const updatedContributions = prev.contributions?.filter(
+          (c) => (c.id || c.tempId) !== (contribution.id || contribution.tempId)
+        );
+
+        return {
+          ...prev,
+          contributions: updatedContributions,
+        };
+      });
+
+      await Swal.fire({
         icon: "success",
         title: "Transaction Deleted!",
         text: "The saving contribution has been removed.",
@@ -428,12 +437,12 @@ export default function SavingsCardModal({
                       {/* Goal Name */}
                       <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700">
-                          Goal Name
+                          Goal Name <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
-                          value={editFields.title}
                           placeholder="Enter Goal Name"
+                          value={editFields.title}
                           onChange={handleEditFieldChange("title")}
                           className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                         />
@@ -442,7 +451,8 @@ export default function SavingsCardModal({
                       {/* Target Amount */}
                       <div className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700">
-                          Target Amount ({symbol})
+                          Target Amount ({symbol}){" "}
+                          <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="number"
@@ -485,11 +495,12 @@ export default function SavingsCardModal({
                       {/* Save Button */}
                       <button
                         onClick={handleSaveChanges}
-                        className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg hover:shadow-lg transition-all duration-300 font-medium disabled:opacity-50"
-                        disabled={
-                          !editFields.title.trim() ||
-                          isNaN(Number(editFields.target_amount))
-                        }
+                        disabled={!isEditFormValid()}
+                        className={`w-full py-3 rounded-lg font-medium transition-all duration-300 ${
+                          !isEditFormValid()
+                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                            : "bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:shadow-lg"
+                        }`}
                       >
                         Save Changes
                       </button>
@@ -524,12 +535,12 @@ export default function SavingsCardModal({
                         </div>
                         <button
                           onClick={handleAddSavingsSubmit}
-                          disabled={
-                            !savingsAmount ||
-                            Number(savingsAmount) <= 0 ||
-                            isNaN(Number(savingsAmount))
-                          }
-                          className="px-4 sm:px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center space-x-2 font-medium disabled:opacity-50 disabled:transform-none"
+                          disabled={!isSavingsAmountValid()}
+                          className={`px-4 sm:px-6 py-3 rounded-lg flex items-center justify-center space-x-2 font-medium transition-all duration-300 ${
+                            !isSavingsAmountValid()
+                              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                              : "bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:shadow-lg transform hover:-translate-y-0.5"
+                          }`}
                         >
                           <Plus size={16} />
                           <span>Add Savings</span>
@@ -551,7 +562,6 @@ export default function SavingsCardModal({
                         <div className="bg-green-100 border border-green-200 rounded-lg p-3">
                           <p className="text-sm text-green-800 font-medium text-center">
                             Congratulations! You've reached your savings goal!
-                            🏆
                           </p>
                         </div>
                       )}
@@ -587,7 +597,6 @@ export default function SavingsCardModal({
                     ) : (
                       <div className="space-y-3">
                         {contributions
-                          // Sort by date descending (most recent first)
                           .sort((a, b) => new Date(b.date) - new Date(a.date))
                           .map((contribution, index) => (
                             <div

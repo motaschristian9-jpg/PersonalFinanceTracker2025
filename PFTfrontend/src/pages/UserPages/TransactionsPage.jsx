@@ -27,8 +27,23 @@ import {
 
 import { useCurrency } from "../../context/CurrencyContext";
 
+import {
+  TransactionSummarySkeleton,
+  TransactionTableSkeleton,
+} from "../../components/skeletons/TransactionSkeleton";
+
 export default function Transactions() {
-  const { data: transactions } = useTransactions();
+  const {
+    data: transactions,
+    isLoading,
+    isFetching,
+    isInitialLoading,
+  } = useTransactions();
+
+  // Use the correct loading state
+  const showSkeleton =
+    isInitialLoading ||
+    (isLoading && (!transactions || transactions.length === 0));
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState("");
@@ -155,7 +170,7 @@ export default function Transactions() {
   };
 
   // ================= Filtered Transactions =================
-  const filteredTransactions = transactions.filter((tx) => {
+  const filteredTransactions = (transactions || []).filter((tx) => {
     const typeMatch =
       filterType === "all" ? true : tx.type?.toLowerCase() === filterType;
     const descMatch = tx.description
@@ -165,15 +180,38 @@ export default function Transactions() {
   });
 
   // ================= Totals =================
-  const totalIncome = transactions
+  const totalIncome = (transactions || [])
     .filter((t) => t.type?.toLowerCase() === "income")
     .reduce((acc, t) => acc + Number(t.amount), 0);
 
-  const totalExpenses = transactions
+  const totalExpenses = (transactions || [])
     .filter((t) => t.type?.toLowerCase() === "expense")
     .reduce((acc, t) => acc + Number(t.amount), 0);
 
   const netBalance = totalIncome - totalExpenses;
+
+  if (isLoading && transactions.length === 0) {
+    return (
+      <div className="space-y-4 sm:space-y-6 lg:space-y-8 p-4 sm:p-6 lg:p-0">
+        {/* Page Header Skeleton */}
+        <section className="relative">
+          <div className="absolute -inset-1 bg-gradient-to-r from-green-200/30 to-green-300/20 rounded-2xl blur opacity-40"></div>
+          <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-green-100/50 p-4 sm:p-6 lg:p-8">
+            <div className="flex items-center space-x-4 animate-pulse">
+              <div className="w-16 h-16 bg-gray-200 rounded-2xl"></div>
+              <div className="flex-1 space-y-3">
+                <div className="h-8 bg-gray-200 rounded w-48"></div>
+                <div className="h-4 bg-gray-200 rounded w-64"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <TransactionSummarySkeleton />
+        <TransactionTableSkeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 p-4 sm:p-6 lg:p-0">
@@ -229,7 +267,8 @@ export default function Transactions() {
                   Total Income
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-green-600">
-                  {symbol}{totalIncome.toLocaleString()}
+                  {symbol}
+                  {totalIncome.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -248,7 +287,8 @@ export default function Transactions() {
                   Total Expenses
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-red-500">
-                  {symbol}{totalExpenses.toLocaleString()}
+                  {symbol}
+                  {totalExpenses.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -271,7 +311,8 @@ export default function Transactions() {
                     netBalance >= 0 ? "text-green-600" : "text-red-500"
                   }`}
                 >
-                  {symbol}{netBalance.toLocaleString()}
+                  {symbol}
+                  {netBalance.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -397,10 +438,19 @@ export default function Transactions() {
                               : "-"}
                           </td>
                           <td className="py-4 px-6">
-                            <span className="px-3 py-1 bg-gray-100 rounded-full text-xs font-medium text-gray-700">
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                tx.type?.toLowerCase() === "income"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : tx.type?.toLowerCase() === "expense"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-gray-100 text-gray-700"
+                              }`}
+                            >
                               {tx.category || "-"}
                             </span>
                           </td>
+
                           <td className="py-4 px-6 text-gray-600 max-w-xs truncate">
                             {tx.description || "-"}
                           </td>
@@ -421,7 +471,8 @@ export default function Transactions() {
                                 {tx.type?.toLowerCase() === "income"
                                   ? "+"
                                   : "-"}{" "}
-                                {symbol}{Number(tx.amount || 0).toLocaleString()}
+                                {symbol}
+                                {Number(tx.amount || 0).toLocaleString()}
                               </span>
                             </div>
                           </td>
@@ -439,7 +490,8 @@ export default function Transactions() {
                           <td className="py-4 px-6 text-right">
                             <div className="flex items-center justify-end space-x-2">
                               <button
-                                className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                                className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors disabled:text-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                disabled={!tx.transaction_id}
                                 onClick={() =>
                                   handleOpenModal(tx.type?.toLowerCase(), tx)
                                 }
@@ -447,8 +499,9 @@ export default function Transactions() {
                                 <Edit size={16} />
                               </button>
                               <button
-                                className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                                onClick={() => handleDelete(txId)}
+                                className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:text-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                disabled={!tx.transaction_id}
+                                onClick={() => handleDelete(tx.transaction_id)}
                               >
                                 <Trash2 size={16} />
                               </button>
@@ -565,7 +618,8 @@ export default function Transactions() {
                                   : "text-red-500"
                               }`}
                             >
-                              {tx.type?.toLowerCase() === "income" ? "+" : "-"}{symbol}
+                              {tx.type?.toLowerCase() === "income" ? "+" : "-"}
+                              {symbol}
                               {Number(tx.amount || 0).toLocaleString()}
                             </div>
                           </div>
@@ -573,7 +627,12 @@ export default function Transactions() {
 
                         <div className="flex flex-col space-y-1 flex-shrink-0">
                           <button
-                            className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                            className={`p-2 rounded-lg transition-colors ${
+                              tx.transaction_id
+                                ? "text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                                : "text-gray-400 cursor-not-allowed bg-gray-100"
+                            }`}
+                            disabled={!tx.transaction_id}
                             onClick={() =>
                               handleOpenModal(tx.type?.toLowerCase(), tx)
                             }
@@ -581,8 +640,13 @@ export default function Transactions() {
                             <Edit size={14} />
                           </button>
                           <button
-                            className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                            onClick={() => handleDelete(txId)}
+                            className={`p-2 rounded-lg transition-colors ${
+                              tx.transaction_id
+                                ? "text-red-500 hover:text-red-700 hover:bg-red-50"
+                                : "text-gray-400 cursor-not-allowed bg-gray-100"
+                            }`}
+                            disabled={!tx.transaction_id}
+                            onClick={() => handleDelete(tx.transaction_id)}
                           >
                             <Trash2 size={14} />
                           </button>

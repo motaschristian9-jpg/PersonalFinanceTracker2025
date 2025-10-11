@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Swal from "sweetalert2";
-import { useOutletContext } from "react-router-dom";
 import DashboardLayout from "../../layouts/UserLayout";
 import {
   Minus,
@@ -21,19 +20,15 @@ import {
 } from "lucide-react";
 import ModalForm from "../../components/ModalForm";
 import { exportExpenseReport } from "../../utils/exportUtils";
-import {
-  fetchTransactions,
-  addTransaction,
-  updateTransaction,
-  deleteTransaction,
-} from "../../api/api";
-import { useAddTransaction, useDeleteTransaction, useUpdateTransaction } from "../../api/queries";
+
+import { useAddTransaction, useDeleteTransaction, useUpdateTransaction, useTransactions } from "../../api/queries";
 
 import { useCurrency } from "../../context/CurrencyContext"; // ✅ Import context hook
 
 export default function ExpensesPage() {
   const queryClient = useQueryClient();
-  const { user, transactions, budgets, goals, reports } = useOutletContext();
+  const { data: transactions } = useTransactions();
+
   const { symbol } = useCurrency(); // ✅ Get currency symbol from context
 
   // Modal state

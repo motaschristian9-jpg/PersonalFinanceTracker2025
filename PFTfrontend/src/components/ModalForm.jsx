@@ -72,6 +72,38 @@ export default function ModalForm({
     "Other",
   ];
 
+  // ========== VALIDATION LOGIC ==========
+  const isFormValid = () => {
+    if (type === "income" || type === "expense") {
+      return !!(
+        formData.category &&
+        formData.amount &&
+        Number(formData.amount) > 0 &&
+        formData.transaction_date
+      );
+    } else if (type === "budget") {
+      if (selectedBudget && expenseAmount) {
+        return Number(expenseAmount) > 0;
+      } else {
+        return !!(
+          formData.category &&
+          formData.amount &&
+          Number(formData.amount) > 0 &&
+          formData.start_date &&
+          formData.end_date
+        );
+      }
+    } else if (type === "goal") {
+      return !!(
+        formData.title &&
+        formData.target_amount &&
+        Number(formData.target_amount) > 0 &&
+        formData.deadline
+      );
+    }
+    return false;
+  };
+
   const getModalConfig = () => {
     switch (type) {
       case "income":
@@ -131,20 +163,16 @@ export default function ModalForm({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Don't proceed if form is invalid
+    if (!isFormValid()) return;
+
     setLoading(true);
 
     try {
       let payload = {};
 
       if (type === "income" || type === "expense") {
-        if (
-          !formData.category ||
-          !formData.amount ||
-          !formData.transaction_date
-        ) {
-          throw new Error("Category, amount, and date are required.");
-        }
-
         payload = {
           type: type.charAt(0).toUpperCase() + type.slice(1),
           category: formData.category,
@@ -160,17 +188,6 @@ export default function ModalForm({
             amount: Number(expenseAmount),
           };
         } else {
-          if (
-            !formData.category ||
-            !formData.amount ||
-            !formData.start_date ||
-            !formData.end_date
-          ) {
-            throw new Error(
-              "Category, amount, start and end date are required."
-            );
-          }
-
           payload = {
             category: formData.category,
             amount: Number(formData.amount),
@@ -181,12 +198,6 @@ export default function ModalForm({
           };
         }
       } else if (type === "goal") {
-        if (!formData.title || !formData.target_amount || !formData.deadline) {
-          throw new Error(
-            "Goal name, target amount, and deadline are required."
-          );
-        }
-
         payload = {
           title: formData.title,
           target_amount: Number(formData.target_amount),
@@ -194,8 +205,6 @@ export default function ModalForm({
           description: formData.description || "",
           editingId: editingId || null,
         };
-      } else {
-        throw new Error("Invalid form type");
       }
 
       await onSubmit(payload);
@@ -267,7 +276,7 @@ export default function ModalForm({
 
               <button
                 onClick={onClose}
-                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all duration-200 cursor-pointer"
               >
                 <X size={20} />
               </button>
@@ -278,7 +287,6 @@ export default function ModalForm({
             <div className="space-y-4">
               {(type === "income" || type === "expense") && (
                 <>
-                  {/* Category, Amount, Date, Description fields */}
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-gray-700">
                       Category <span className="text-red-500">*</span>
@@ -289,7 +297,7 @@ export default function ModalForm({
                         onChange={(e) =>
                           setFormData({ ...formData, category: e.target.value })
                         }
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white cursor-pointer"
                       >
                         <option value="" disabled>
                           Select category
@@ -311,16 +319,9 @@ export default function ModalForm({
                       Amount <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
-                      {/* 2. REPLACE DollarSign with a <span> and the dynamic symbol */}
-                      <span
-                        size={18}
-                        // Apply the same positioning and styling classes
-                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                      >
-                        {/* Render the dynamic symbol here */}
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
                         {symbol}
                       </span>
-                      {/* The input remains the same, using the pl-11 to create space for the symbol */}
                       <input
                         type="number"
                         placeholder="0.00"
@@ -353,7 +354,7 @@ export default function ModalForm({
                             transaction_date: e.target.value,
                           })
                         }
-                        className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                        className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all cursor-pointer"
                       />
                     </div>
                   </div>
@@ -386,7 +387,6 @@ export default function ModalForm({
 
               {type === "budget" && (
                 <>
-                  {/* Budget modal fields (existing code) */}
                   {!selectedBudget && (
                     <>
                       <div className="space-y-2">
@@ -419,16 +419,9 @@ export default function ModalForm({
                           Budget Amount <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
-                          {/* REPLACEMENT: Use a span to display the dynamic symbol */}
-                          <span
-                            // The size property is for an icon component; a span doesn't need it.
-                            // We preserve the positioning and styling classes.
-                            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                            style={{ fontSize: "1.125rem" }} // Optional: Adjust font size to match the 'size=18' icon
-                          >
+                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
                             {symbol}
                           </span>
-                          {/* The input remains the same, relying on pl-11 for padding */}
                           <input
                             type="number"
                             placeholder="0.00"
@@ -558,16 +551,9 @@ export default function ModalForm({
                           Expense Amount <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
-                          {/* REPLACED: DollarSign is now a dynamic span */}
-                          <span
-                            // Keeping the size property here is redundant for a <span> but harmless.
-                            // The font size should be controlled by your CSS, or use a utility class.
-                            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                          >
-                            {/* Render the dynamic currency symbol */}
+                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
                             {symbol}
                           </span>
-                          {/* The input element remains the same, using pl-11 to make space for the symbol */}
                           <input
                             type="number"
                             placeholder="0.00"
@@ -613,15 +599,9 @@ export default function ModalForm({
                       Target Amount <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
-                      {/* 2. REPLACE DollarSign with a <span> and the dynamic symbol */}
-                      <span
-                        size={18}
-                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                      >
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
                         {symbol}
                       </span>
-                      {/* 3. Adjust the padding (pl-11) to account for the symbol's width,
-          though pl-11 is likely sufficient for all single-character symbols. */}
                       <input
                         type="number"
                         placeholder="0.00"
@@ -687,8 +667,12 @@ export default function ModalForm({
               <button
                 type="submit"
                 onClick={handleSubmit}
-                disabled={loading}
-                className={`w-full py-3 px-4 rounded-lg text-white font-semibold mt-4 bg-gradient-to-r ${config.gradient} hover:opacity-90 transition-all duration-200`}
+                disabled={loading || !isFormValid()}
+                className={`w-full py-3 px-4 rounded-lg text-white font-semibold mt-4 transition-all duration-200 cursor-pointer ${
+                  loading || !isFormValid()
+                    ? "bg-gray-300 cursor-not-allowed opacity-60"
+                    : `bg-gradient-to-r ${config.gradient} hover:opacity-90`
+                }`}
               >
                 {loading ? (
                   <Loader2 className="animate-spin mx-auto" size={20} />

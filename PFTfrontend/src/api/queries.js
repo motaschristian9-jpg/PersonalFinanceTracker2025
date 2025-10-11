@@ -24,16 +24,19 @@ import {
 
 // ------------------ HELPER ------------------
 const useFetch = (key, fetchFn, defaultValue = []) => {
-  const { data = defaultValue, ...rest } = useQuery({
+  const queryResult = useQuery({
     queryKey: [key],
     queryFn: async () => {
       const res = await fetchFn();
-      return res.data; // <-- unwrap once here
+      return res.data;
     },
     refetchOnWindowFocus: false,
   });
 
-  return { data, ...rest };
+  return {
+    ...queryResult,
+    data: queryResult.data ?? defaultValue,
+  };
 };
 
 // ------------------ QUERIES ------------------
@@ -54,20 +57,37 @@ export const useAddTransaction = () => {
 
   return useMutation({
     mutationFn: addTransaction,
+
+    // ⚡ Optimistic update
     onMutate: async (newTxData) => {
       await queryClient.cancelQueries(["transactions"]);
-      const previousTxData = queryClient.getQueryData(["transactions"]);
+
+      const previousTransactions = queryClient.getQueryData(["transactions"]);
+
+      // Add new transaction instantly
       queryClient.setQueryData(["transactions"], (old = []) => [
         ...old,
-        { id: Date.now(), ...newTxData },
+        { id: Date.now(), ...newTxData }, // Temporary ID until backend responds
       ]);
-      return { previousTxData };
+
+      return { previousTransactions };
     },
-    onError: (context) => {
-      queryClient.setQueryData(["transactions"], context.previousTxData);
+
+    // ⛔ Rollback on failure
+    onError: (err, newTxData, context) => {
+      if (context?.previousTransactions) {
+        queryClient.setQueryData(
+          ["transactions"],
+          context.previousTransactions
+        );
+      }
     },
+
+    // ✅ Smooth revalidation after success
     onSettled: () => {
-      queryClient.invalidateQueries(["transactions"]);
+      setTimeout(() => {
+        queryClient.invalidateQueries(["transactions"]);
+      }, 300);
     },
   });
 };
@@ -217,11 +237,13 @@ export const useUpdateTransaction = () => {
   return useMutation({
     mutationFn: ({ id, data }) => updateTransaction(id, data),
 
+    // ✅ Optimistic update
     onMutate: async ({ id, data }) => {
-      await queryClient.cancelQueries(["transactions"]);
+      await queryClient.cancelQueries({ queryKey: ["transactions"] });
 
       const previousTransactions = queryClient.getQueryData(["transactions"]);
 
+      // Instantly reflect updated transaction in UI
       queryClient.setQueryData(["transactions"], (old = []) =>
         old.map((tx) => (tx.id === id ? { ...tx, ...data } : tx))
       );
@@ -229,12 +251,21 @@ export const useUpdateTransaction = () => {
       return { previousTransactions };
     },
 
+    // 🔁 Rollback on error
     onError: (err, variables, context) => {
-      queryClient.setQueryData(["transactions"], context.previousTransactions);
+      if (context?.previousTransactions) {
+        queryClient.setQueryData(
+          ["transactions"],
+          context.previousTransactions
+        );
+      }
     },
 
+    // 🕐 Slightly delay refetch for smoother UX
     onSettled: () => {
-      queryClient.invalidateQueries(["transactions"]);
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      }, 500);
     },
   });
 };
@@ -328,8 +359,9 @@ export const useDeleteTransaction = () => {
   return useMutation({
     mutationFn: deleteTransaction,
 
+    // Optimistic update for instant UI response
     onMutate: async (id) => {
-      await queryClient.cancelQueries(["transactions"]);
+      await queryClient.cancelQueries({ queryKey: ["transactions"] });
 
       const previousTransactions = queryClient.getQueryData(["transactions"]);
 
@@ -340,12 +372,22 @@ export const useDeleteTransaction = () => {
       return { previousTransactions };
     },
 
-    onError: (err, id, context) => {
-      queryClient.setQueryData(["transactions"], context.previousTransactions);
+    // Rollback if error
+    onError: (error, id, context) => {
+      if (context?.previousTransactions) {
+        queryClient.setQueryData(
+          ["transactions"],
+          context.previousTransactions
+        );
+      }
     },
 
-    onSettled: () => {
-      queryClient.invalidateQueries(["transactions"]);
+    // ✅ Instead of invalidating immediately (causing flicker),
+    // we delay it slightly to keep UI smooth.
+    onSettled: async () => {
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      }, 500);
     },
   });
 };

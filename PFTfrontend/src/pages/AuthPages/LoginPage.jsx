@@ -293,7 +293,7 @@ export default function LoginPage() {
                     type="button"
                     onClick={handleLogin}
                     disabled={loading}
-                    className="w-full flex justify-center items-center py-2.5 px-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
+                    className="w-full flex justify-center items-center py-2.5 px-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm cursor-pointer"
                   >
                     {loading ? (
                       <Loader2 className="animate-spin h-4 w-4" />
@@ -315,7 +315,7 @@ export default function LoginPage() {
 
                   <button
                     onClick={() => loginWithGoogle()}
-                    className="mt-3 w-full bg-white border-2 border-gray-200 hover:border-green-300 text-gray-700 py-2.5 rounded-lg font-semibold transition-all duration-300 hover:shadow-lg flex items-center justify-center space-x-2 text-sm"
+                    className="mt-3 w-full bg-white border-2 border-gray-200 hover:border-green-300 text-gray-700 py-2.5 rounded-lg font-semibold transition-all duration-300 hover:shadow-lg flex items-center justify-center space-x-2 text-sm cursor-pointer"
                   >
                     <div className="w-4 h-4 bg-gradient-to-r from-blue-500 via-red-500 to-yellow-500 rounded-full"></div>
                     <span>Sign in with Google</span>

@@ -106,7 +106,7 @@ export default function Transactions() {
       };
 
       if (editingId) {
-        await updateTransactionMutation.mutate({
+        await updateTransactionMutation.mutateAsync({
           id: editingId,
           data: txData,
         });
@@ -118,7 +118,7 @@ export default function Transactions() {
           confirmButtonColor: "#10B981",
         });
       } else {
-        await addTransactionMutation.mutate(txData);
+        await addTransactionMutation.mutateAsync(txData);
 
         Swal.fire({
           icon: "success",
@@ -153,7 +153,7 @@ export default function Transactions() {
       confirmButtonText: "Yes, delete it!",
     }).then((result) => {
       if (result.isConfirmed) {
-        deleteTransactionMutation.mutate(txId, {
+        deleteTransactionMutation.mutateAsync(txId, {
           onSuccess: () => {
             Swal.fire("Deleted!", "Transaction has been deleted.", "success");
           },
@@ -235,14 +235,14 @@ export default function Transactions() {
             </div>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
-                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base"
+                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base cursor-pointer"
                 onClick={() => handleOpenModal("income")}
               >
                 <PlusCircle size={16} className="sm:w-[18px] sm:h-[18px]" />
                 <span className="font-medium">Add Income</span>
               </button>
               <button
-                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base"
+                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base cursor-pointer"
                 onClick={() => handleOpenModal("expense")}
               >
                 <MinusCircle size={16} className="sm:w-[18px] sm:h-[18px]" />
@@ -337,7 +337,7 @@ export default function Transactions() {
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}
-                  className="w-full sm:w-auto border border-gray-200 rounded-lg px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all"
+                  className="w-full sm:w-auto border border-gray-200 rounded-lg px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all cursor-pointer"
                 >
                   <option value="all">All Transactions</option>
                   <option value="income">Income Only</option>
@@ -385,7 +385,7 @@ export default function Transactions() {
           <div className="overflow-x-auto">
             <div className="max-h-96 overflow-y-auto">
               <table className="w-full text-left">
-                <thead className="bg-green-50/50 sticky top-0">
+                <thead className="bg-green-50 sticky top-0">
                   <tr>
                     <th className="py-4 px-6 font-semibold text-gray-700">
                       Date
@@ -490,7 +490,9 @@ export default function Transactions() {
                           <td className="py-4 px-6 text-right">
                             <div className="flex items-center justify-end space-x-2">
                               <button
-                                className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors disabled:text-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                className="p-2 rounded-lg transition-colors
+               text-blue-500 hover:text-blue-700 hover:bg-blue-50
+               disabled:text-gray-400 disabled:bg-gray-200 disabled:cursor-not-allowed cursor-pointer"
                                 disabled={!tx.transaction_id}
                                 onClick={() =>
                                   handleOpenModal(tx.type?.toLowerCase(), tx)
@@ -498,8 +500,11 @@ export default function Transactions() {
                               >
                                 <Edit size={16} />
                               </button>
+
                               <button
-                                className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:text-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                className="p-2 rounded-lg transition-colors
+               text-red-500 hover:text-red-700 hover:bg-red-50
+               disabled:text-gray-400 disabled:bg-gray-200 disabled:cursor-not-allowed cursor-pointer"
                                 disabled={!tx.transaction_id}
                                 onClick={() => handleDelete(tx.transaction_id)}
                               >

@@ -616,9 +616,9 @@ export default function Dashboard() {
                         <span
                           className={`text-sm font-medium ${
                             percentage >= 100
-                              ? "text-red-500"
+                              ? "text-blue-500"
                               : percentage >= 75
-                              ? "text-orange-500"
+                              ? "text-blue-500"
                               : "text-blue-600"
                           }`}
                         >
@@ -630,7 +630,7 @@ export default function Dashboard() {
                         <div
                           className={`h-3 rounded-full transition-all duration-500 ${
                             percentage >= 100
-                              ? "bg-gradient-to-r from-red-500 to-red-600"
+                              ? "bg-gradient-to-r from-blue-500 to-blue-600"
                               : percentage >= 75
                               ? "bg-gradient-to-r from-orange-400 to-orange-500"
                               : "bg-gradient-to-r from-blue-500 to-blue-600"

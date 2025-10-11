@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { useOutletContext } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import ModalForm from "../../components/ModalForm";
 import {
@@ -47,13 +46,14 @@ import {
   useAddContribution,
   useDeleteContribution,
   useDeleteGoal,
+  useGoals,
 } from "../../api/queries";
 
 import { useCurrency } from "../../context/CurrencyContext"; // ✅ Import context hook
 
 export default function SavingsPage() {
   const queryClient = useQueryClient();
-  const { user, transactions, budgets, goals, reports } = useOutletContext();
+  const { data: goals = [] } = useGoals();
   const [selectedGoal, setSelectedGoal] = useState(null);
   const [modalType, setModalType] = useState("");
   const [formData, setFormData] = useState([]);
@@ -78,11 +78,24 @@ export default function SavingsPage() {
 
   // Helper functions
   const getStatus = (goal) => {
-    if (Number(goal.current_amount) >= Number(goal.target_amount))
-      return "Completed";
+    // Calculate total saved from contributions
+    const saved = (
+      Array.isArray(goal.contributions) ? goal.contributions : []
+    ).reduce((sum, c) => {
+      const amount = parseFloat(c.amount);
+      return sum + (isNaN(amount) ? 0 : amount);
+    }, 0);
+
+    const target = parseFloat(goal.target_amount) || 0;
+
+    // Check if goal is completed (saved >= target)
+    if (saved >= target && target > 0) return "Completed";
+
+    // Check if behind schedule
     const now = new Date();
     const deadline = goal.deadline ? new Date(goal.deadline) : null;
     if (deadline && now > deadline) return "Behind";
+
     return "On Track";
   };
 
@@ -124,10 +137,7 @@ export default function SavingsPage() {
 
   // Handlers
 
-  
   const handleDeleteTransaction = async (transaction) => {
-    console.log("Deleting transaction:", transaction);
-
     const result = await Swal.fire({
       title: "Delete this transaction?",
       text: "This action cannot be undone.",
@@ -139,20 +149,28 @@ export default function SavingsPage() {
       cancelButtonText: "Cancel",
     });
 
-    // Log result to inspect behavior
-    console.log("Swal result:", result);
+    if (!result.isConfirmed) {
+      return false;
+    }
 
-    // Proceed only if the user confirmed
-    if (result.isConfirmed || result.value) {
-      try {
-        await deleteContributionMutation.mutateAsync(transaction.id);
-        Swal.fire("Deleted!", "The transaction has been deleted.", "success");
-      } catch (error) {
-        console.error(error);
-        Swal.fire("Error!", "Could not delete transaction.", "error");
-      }
-    } else if (result.isDismissed) {
-      Swal.fire("Cancelled", "The transaction was not deleted.", "info");
+    try {
+      await deleteContributionMutation.mutateAsync(transaction.id);
+      Swal.fire({
+        icon: "success",
+        title: "Deleted!",
+        text: "The transaction has been deleted.",
+        confirmButtonColor: "#10B981",
+      });
+      return true;
+    } catch (error) {
+      console.error(error);
+      Swal.fire({
+        icon: "error",
+        title: "Error!",
+        text: "Could not delete transaction.",
+        confirmButtonColor: "#EF4444",
+      });
+      return false;
     }
   };
 
@@ -366,7 +384,7 @@ export default function SavingsPage() {
 
   const handleSaveGoal = (goalData) => {
     if (goalData.goal_id) {
-      updateGoalMutation.mutate(goalData, {
+      updateGoalMutation.mutateAsync(goalData, {
         onSuccess: (response) => {
           Swal.fire({
             icon: "success",
@@ -387,7 +405,7 @@ export default function SavingsPage() {
         },
       });
     } else {
-      createGoalMutation.mutate(goalData, {
+      createGoalMutation.mutateAsync(goalData, {
         onSuccess: (response) => {
           Swal.fire({
             icon: "success",
@@ -433,7 +451,7 @@ export default function SavingsPage() {
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
               <button
                 onClick={() => handleOpenModal()}
-                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base w-full sm:w-auto"
+                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base w-full sm:w-auto cursor-pointer"
               >
                 <Plus size={16} className="sm:w-[18px] sm:h-[18px]" />
                 <span className="font-medium">Add Goal</span>
@@ -450,7 +468,7 @@ export default function SavingsPage() {
           <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-blue-100/50 p-4 sm:p-6 hover:shadow-xl transition-shadow">
             <div className="flex items-center space-x-3 sm:space-x-4">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <Target className="text-white" size={18} />
+                <DollarSign className="text-white" size={18} />
               </div>
               <div>
                 <h3 className="text-gray-600 font-medium text-xs sm:text-sm">
@@ -514,7 +532,7 @@ export default function SavingsPage() {
           <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-purple-100/50 p-4 sm:p-6 hover:shadow-xl transition-shadow">
             <div className="flex items-center space-x-3 sm:space-x-4">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <Trophy className="text-white" size={18} />
+                <CheckCircle className="text-white" size={18} />
               </div>
               <div>
                 <h3 className="text-gray-600 font-medium text-xs sm:text-sm">
@@ -554,7 +572,7 @@ export default function SavingsPage() {
                 </p>
                 <button
                   onClick={() => handleOpenModal()}
-                  className="mt-4 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:shadow-lg transition-all duration-300"
+                  className="mt-4 px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:shadow-lg transition-all duration-300 cursor-pointer"
                 >
                   Create Goal
                 </button>
@@ -598,7 +616,18 @@ export default function SavingsPage() {
                     }}
                   >
                     <div className="absolute -inset-1 bg-gradient-to-r from-gray-200/30 to-gray-300/20 rounded-xl blur opacity-0 group-hover:opacity-50 transition-opacity"></div>
-                    <div className="relative bg-white rounded-xl border border-gray-200 p-4 sm:p-6 hover:shadow-lg transition-all duration-300">
+                    <div className="relative bg-white rounded-xl border border-gray-200 p-4 sm:p-6 hover:shadow-lg transition-all duration-300 overflow-hidden">
+                      {/* Colored Accent Top */}
+                      <div
+                        className={`absolute top-0 left-0 right-0 h-1 ${
+                          statusColor === "green"
+                            ? "bg-gradient-to-r from-green-500 to-green-400"
+                            : statusColor === "red"
+                            ? "bg-gradient-to-r from-red-500 to-red-400"
+                            : "bg-gradient-to-r from-blue-500 to-blue-400"
+                        }`}
+                      ></div>
+
                       {/* Goal Header */}
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1 min-w-0">
@@ -654,7 +683,7 @@ export default function SavingsPage() {
                           <span
                             className={`font-semibold ${
                               remaining <= 0
-                                ? "text-green-600"
+                                ? "text-orange-600"
                                 : "text-orange-600"
                             }`}
                           >
@@ -837,11 +866,14 @@ export default function SavingsPage() {
                       <td className="py-4 px-6 text-right">
                         <div className="flex items-center justify-end space-x-2">
                           <button
-                            className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                            className="p-2 rounded-lg transition-colors
+               text-red-500 hover:text-red-700 hover:bg-red-50
+               disabled:text-gray-400 disabled:bg-gray-200 disabled:cursor-not-allowed cursor-pointer"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDeleteGoal(goal);
                             }}
+                            disabled={!goal} // disables button if `goal` is falsy
                           >
                             <Trash2 size={16} />
                           </button>

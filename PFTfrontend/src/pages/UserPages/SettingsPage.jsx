@@ -105,7 +105,7 @@ const SettingsPage = () => {
                 value={currency}
                 onChange={(e) => handleCurrencyChange(e.target.value)}
                 disabled={isPending}
-                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white disabled:opacity-50"
+                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white disabled:opacity-50 cursor-pointer"
               >
                 <option value="PHP">Philippine Peso (₱)</option>
                 <option value="USD">US Dollar ($)</option>
@@ -132,7 +132,7 @@ const SettingsPage = () => {
               account.
             </p>
             <Button
-              className="bg-gradient-to-r from-red-600 to-red-700 hover:shadow-lg transition-all duration-300 w-full sm:w-auto"
+              className="bg-gradient-to-r from-red-600 to-red-700 hover:shadow-lg transition-all duration-300 w-full sm:w-auto cursor-pointer"
               onClick={handleLogout}
             >
               <LogOut className="mr-2" size={16} />

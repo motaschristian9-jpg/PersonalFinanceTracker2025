@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { Shield } from "lucide-react";
-import { useOutletContext } from "react-router-dom";
 import Swal from "sweetalert2";
 import ChangePasswordModal from "../../components/ChangePasswordModal"; // Import the modal
-import { useChangePassword, useUpdateProfile } from "../../api/queries";
+import {
+  useChangePassword,
+  useUpdateProfile,
+  useProfile,
+} from "../../api/queries";
 
 const ProfilePage = () => {
-  const { user } = useOutletContext();
+  const { data: user } = useProfile();
   const [isEditing, setIsEditing] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -47,6 +50,8 @@ const ProfilePage = () => {
         text: "Profile updated successfully!",
         confirmButtonColor: "#10B981",
       });
+
+      setIsEditing(false);
     } catch (err) {
       console.log(err);
       Swal.fire({
@@ -114,7 +119,7 @@ const ProfilePage = () => {
               {!isEditing ? (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="flex items-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base"
+                  className="flex items-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base cursor-pointer"
                 >
                   <svg
                     width="16"
@@ -130,13 +135,13 @@ const ProfilePage = () => {
                 <div className="flex space-x-2">
                   <button
                     onClick={() => setIsEditing(false)}
-                    className="px-4 py-2.5 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-all duration-200"
+                    className="px-4 py-2.5 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-all duration-200 cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleSave}
-                    className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300"
+                    className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
                   >
                     <svg
                       width="16"
@@ -194,7 +199,7 @@ const ProfilePage = () => {
                   </p>
                 </div>
               </div>
-              <button className="w-full sm:w-auto px-4 py-2 border border-green-200 text-green-700 rounded-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base">
+              <button className="w-full sm:w-auto px-4 py-2 border border-green-200 text-green-700 rounded-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base cursor-pointer">
                 Change Photo
               </button>
             </div>
@@ -281,7 +286,7 @@ const ProfilePage = () => {
               </div>
               <button
                 onClick={() => setIsPasswordModalOpen(true)}
-                className="w-full sm:w-auto flex items-center justify-center sm:justify-start bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 hover:shadow-lg transition-all duration-300 border-0 px-4 py-2 rounded-lg"
+                className="w-full sm:w-auto flex items-center justify-center sm:justify-start bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 hover:shadow-lg transition-all duration-300 border-0 px-4 py-2 rounded-lg cursor-pointer"
               >
                 <Shield className="mr-2" size={18} />
                 <span>Change Password</span>

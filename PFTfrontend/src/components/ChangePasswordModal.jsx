@@ -57,6 +57,14 @@ export default function ChangePasswordModal({ isOpen, onClose, onSubmit }) {
     setPasswordStrength(getPasswordStrength(formData.newPassword));
   }, [formData.newPassword]);
 
+  // Check if all required fields are filled
+  const isFormValid =
+    formData.currentPassword.trim() &&
+    formData.newPassword.trim() &&
+    formData.confirmPassword.trim() &&
+    formData.newPassword === formData.confirmPassword &&
+    formData.newPassword.length >= 8;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -158,7 +166,7 @@ export default function ChangePasswordModal({ isOpen, onClose, onSubmit }) {
 
               <button
                 onClick={handleClose}
-                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all duration-200 cursor-pointer"
               >
                 <X size={20} />
               </button>
@@ -290,8 +298,12 @@ export default function ChangePasswordModal({ isOpen, onClose, onSubmit }) {
 
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full py-3 px-4 rounded-lg text-white font-semibold mt-6 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:opacity-90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading || !isFormValid}
+                className={`w-full py-3 px-4 rounded-lg text-white font-semibold mt-6 transition-all duration-200 ${
+                  isFormValid && !loading
+                    ? "bg-gradient-to-r from-indigo-500 to-indigo-600 hover:opacity-90 cursor-pointer"
+                    : "bg-gray-300 cursor-not-allowed opacity-50"
+                }`}
               >
                 {loading ? (
                   <Loader2 className="animate-spin mx-auto" size={20} />

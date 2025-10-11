@@ -16,13 +16,12 @@ import {
   deleteBudget,
   deleteGoal,
   deleteContribution,
-  addExpenseToBudget, // <- import new API function
+  addExpenseToBudget,
   changePassword,
   updateProfile,
-  updateUserCurrency, // <- import new API function
+  updateUserCurrency,
 } from "./api";
 
-// ------------------ HELPER ------------------
 const useFetch = (key, fetchFn, defaultValue = []) => {
   const queryResult = useQuery({
     queryKey: [key],
@@ -39,7 +38,6 @@ const useFetch = (key, fetchFn, defaultValue = []) => {
   };
 };
 
-// ------------------ QUERIES ------------------
 export const useProfile = () => useFetch("user", fetchProfile);
 
 export const useTransactions = () =>
@@ -51,29 +49,38 @@ export const useGoals = () => useFetch("goals", fetchGoals);
 
 export const useReports = () => useFetch("reports", fetchReports);
 
-// ------------------ ADD MUTATIONS ------------------
+const createMutation = (mutationFn, options = {}) => {
+  const queryClient = useQueryClient();
+  const { onSettledHook = null } = options;
+
+  return useMutation({
+    mutationFn,
+    onMutate: options.onMutate,
+    onError: options.onError,
+    onSettled: () => {
+      if (onSettledHook) {
+        onSettledHook(queryClient);
+      }
+    },
+  });
+};
+
 export const useAddTransaction = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: addTransaction,
-
-    // ⚡ Optimistic update
     onMutate: async (newTxData) => {
-      await queryClient.cancelQueries(["transactions"]);
-
+      await queryClient.cancelQueries({ queryKey: ["transactions"] });
       const previousTransactions = queryClient.getQueryData(["transactions"]);
 
-      // Add new transaction instantly
       queryClient.setQueryData(["transactions"], (old = []) => [
         ...old,
-        { id: Date.now(), ...newTxData }, // Temporary ID until backend responds
+        { id: Date.now(), ...newTxData },
       ]);
 
       return { previousTransactions };
     },
-
-    // ⛔ Rollback on failure
     onError: (err, newTxData, context) => {
       if (context?.previousTransactions) {
         queryClient.setQueryData(
@@ -82,11 +89,9 @@ export const useAddTransaction = () => {
         );
       }
     },
-
-    // ✅ Smooth revalidation after success
     onSettled: () => {
       setTimeout(() => {
-        queryClient.invalidateQueries(["transactions"]);
+        queryClient.invalidateQueries({ queryKey: ["transactions"] });
       }, 300);
     },
   });
@@ -100,6 +105,7 @@ export const useAddBudget = () => {
     onMutate: async (newBudgetData) => {
       await queryClient.cancelQueries({ queryKey: ["budgets"] });
       const previousBudgetData = queryClient.getQueryData(["budgets"]);
+
       queryClient.setQueryData(["budgets"], (old = []) => [
         ...old,
         {
@@ -109,15 +115,16 @@ export const useAddBudget = () => {
           description: newBudgetData.description || "",
         },
       ]);
+
       return { previousBudgetData };
     },
-    onError: (context) => {
+    onError: (err, newBudgetData, context) => {
       if (context?.previousBudgetData) {
         queryClient.setQueryData(["budgets"], context.previousBudgetData);
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries(["budgets"]);
+      queryClient.invalidateQueries({ queryKey: ["budgets"] });
     },
   });
 };
@@ -128,18 +135,20 @@ export const useAddGoal = () => {
   return useMutation({
     mutationFn: addGoal,
     onMutate: async (newGoalData) => {
-      await queryClient.cancelQueries(["goals"]);
+      await queryClient.cancelQueries({ queryKey: ["goals"] });
       const previousGoalData = queryClient.getQueryData(["goals"]);
+
       queryClient.setQueryData(["goals"], (old = []) => [...old, newGoalData]);
+
       return { previousGoalData };
     },
-    onError: (context) => {
+    onError: (err, newGoalData, context) => {
       if (context?.previousGoalData) {
         queryClient.setQueryData(["goals"], context.previousGoalData);
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries(["goals"]);
+      queryClient.invalidateQueries({ queryKey: ["goals"] });
     },
   });
 };
@@ -149,22 +158,10 @@ export const useAddContribution = () => {
 
   return useMutation({
     mutationFn: addContribution,
-
-    // NOTE: Removed onMutate and onSuccess handlers to eliminate temporary IDs.
-    // The hook now relies on full refetching after the API call is complete,
-    // ensuring the UI only shows items that have the real database ID.
-
-    // Rollback on error (Optional, but good for reporting UI)
     onError: (err) => {
-      // You can still perform simple error reporting here if needed,
-      // but no need for complex cache rollback since we removed onMutate.
       console.error("Failed to add contribution:", err);
     },
-
-    // ✅ Refetch after success or error (This forces the UI to get fresh data)
     onSettled: () => {
-      // These calls ensure the UI fetches the complete and accurate list of goals
-      // (which now includes the new contribution with its REAL database ID).
       queryClient.invalidateQueries({ queryKey: ["goals"] });
       queryClient.invalidateQueries({ queryKey: ["reports"] });
     },
@@ -176,22 +173,20 @@ export const useAddExpenseToBudget = () => {
 
   return useMutation({
     mutationFn: addExpenseToBudget,
-
     onMutate: async (newExpense) => {
-      await queryClient.cancelQueries(["budgets"]);
-      await queryClient.cancelQueries(["transactions"]);
+      await queryClient.cancelQueries({ queryKey: ["budgets"] });
+      await queryClient.cancelQueries({ queryKey: ["transactions"] });
 
       const prevBudgets = queryClient.getQueryData(["budgets"]);
       const prevTransactions = queryClient.getQueryData(["transactions"]);
 
-      // Optimistically update budgets
       if (prevBudgets) {
         queryClient.setQueryData(["budgets"], (old) =>
           old.map((budget) =>
             budget.id === newExpense.budgetId
               ? {
                   ...budget,
-                  expenses: [...(budget.expenses ?? []), newExpense], // ✅ safe spread
+                  expenses: [...(budget.expenses ?? []), newExpense],
                   spent: (budget.spent ?? 0) + newExpense.amount,
                 }
               : budget
@@ -199,13 +194,12 @@ export const useAddExpenseToBudget = () => {
         );
       }
 
-      // Optimistically update transactions
       if (prevTransactions) {
         queryClient.setQueryData(["transactions"], (old) => [
           ...old,
           {
             ...newExpense,
-            id: Date.now(), // temp id
+            id: Date.now(),
             type: "expense",
           },
         ]);
@@ -213,8 +207,7 @@ export const useAddExpenseToBudget = () => {
 
       return { prevBudgets, prevTransactions };
     },
-
-    onError: (_err, _newExpense, context) => {
+    onError: (err, newExpense, context) => {
       if (context?.prevBudgets) {
         queryClient.setQueryData(["budgets"], context.prevBudgets);
       }
@@ -222,36 +215,28 @@ export const useAddExpenseToBudget = () => {
         queryClient.setQueryData(["transactions"], context.prevTransactions);
       }
     },
-
     onSettled: () => {
-      queryClient.invalidateQueries(["budgets"]);
-      queryClient.invalidateQueries(["transactions"]);
+      queryClient.invalidateQueries({ queryKey: ["budgets"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
     },
   });
 };
 
-// ------------------ UPDATE MUTATIONS ------------------
 export const useUpdateTransaction = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, data }) => updateTransaction(id, data),
-
-    // ✅ Optimistic update
     onMutate: async ({ id, data }) => {
       await queryClient.cancelQueries({ queryKey: ["transactions"] });
-
       const previousTransactions = queryClient.getQueryData(["transactions"]);
 
-      // Instantly reflect updated transaction in UI
       queryClient.setQueryData(["transactions"], (old = []) =>
         old.map((tx) => (tx.id === id ? { ...tx, ...data } : tx))
       );
 
       return { previousTransactions };
     },
-
-    // 🔁 Rollback on error
     onError: (err, variables, context) => {
       if (context?.previousTransactions) {
         queryClient.setQueryData(
@@ -260,8 +245,6 @@ export const useUpdateTransaction = () => {
         );
       }
     },
-
-    // 🕐 Slightly delay refetch for smoother UX
     onSettled: () => {
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ["transactions"] });
@@ -275,14 +258,10 @@ export const useUpdateBudget = () => {
 
   return useMutation({
     mutationFn: updateBudget,
-
     onMutate: async (updatedBudget) => {
       await queryClient.cancelQueries({ queryKey: ["budgets"] });
-
-      // Snapshot of current budgets before update
       const previousBudgets = queryClient.getQueryData(["budgets"]);
 
-      // Optimistically update cache
       queryClient.setQueryData(["budgets"], (old = []) =>
         old.map((budget) =>
           budget.budget_id === updatedBudget.id
@@ -296,18 +275,15 @@ export const useUpdateBudget = () => {
         )
       );
 
-      // Pass snapshot for rollback if error
       return { previousBudgets };
     },
-
     onError: (err, newBudget, context) => {
       if (context?.previousBudgets) {
         queryClient.setQueryData(["budgets"], context.previousBudgets);
       }
     },
-
     onSettled: () => {
-      queryClient.invalidateQueries(["budgets"]);
+      queryClient.invalidateQueries({ queryKey: ["budgets"] });
     },
   });
 };
@@ -317,15 +293,10 @@ export const useUpdateGoal = () => {
 
   return useMutation({
     mutationFn: ({ id, data }) => updateGoal(id, data),
-
-    // 👇 Optimistic Update
     onMutate: async ({ id, data }) => {
-      await queryClient.cancelQueries(["goals"]);
-
-      // Snapshot the previous goals
+      await queryClient.cancelQueries({ queryKey: ["goals"] });
       const previousGoals = queryClient.getQueryData(["goals"]);
 
-      // Optimistically update the cache
       queryClient.setQueryData(["goals"], (oldGoals) =>
         oldGoals
           ? oldGoals.map((goal) =>
@@ -334,35 +305,26 @@ export const useUpdateGoal = () => {
           : []
       );
 
-      // Return context so we can rollback if error
       return { previousGoals };
     },
-
-    // If error, rollback to previous state
     onError: (err, variables, context) => {
       if (context?.previousGoals) {
         queryClient.setQueryData(["goals"], context.previousGoals);
       }
     },
-
-    // After success or failure, refetch goals
     onSettled: () => {
-      queryClient.invalidateQueries(["goals"]);
+      queryClient.invalidateQueries({ queryKey: ["goals"] });
     },
   });
 };
 
-// ------------------ DELETE MUTATIONS ------------------
 export const useDeleteTransaction = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: deleteTransaction,
-
-    // Optimistic update for instant UI response
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["transactions"] });
-
       const previousTransactions = queryClient.getQueryData(["transactions"]);
 
       queryClient.setQueryData(["transactions"], (old = []) =>
@@ -371,8 +333,6 @@ export const useDeleteTransaction = () => {
 
       return { previousTransactions };
     },
-
-    // Rollback if error
     onError: (error, id, context) => {
       if (context?.previousTransactions) {
         queryClient.setQueryData(
@@ -381,10 +341,7 @@ export const useDeleteTransaction = () => {
         );
       }
     },
-
-    // ✅ Instead of invalidating immediately (causing flicker),
-    // we delay it slightly to keep UI smooth.
-    onSettled: async () => {
+    onSettled: () => {
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ["transactions"] });
       }, 500);
@@ -397,29 +354,23 @@ export const useDeleteBudget = () => {
 
   return useMutation({
     mutationFn: deleteBudget,
-
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["budgets"] });
-
-      // Snapshot before deletion
       const previousBudgets = queryClient.getQueryData(["budgets"]);
 
-      // Optimistically remove budget
       queryClient.setQueryData(["budgets"], (old = []) =>
         old.filter((budget) => budget.budget_id !== id)
       );
 
       return { previousBudgets };
     },
-
     onError: (err, id, context) => {
       if (context?.previousBudgets) {
         queryClient.setQueryData(["budgets"], context.previousBudgets);
       }
     },
-
     onSettled: () => {
-      queryClient.invalidateQueries(["budgets"]);
+      queryClient.invalidateQueries({ queryKey: ["budgets"] });
     },
   });
 };
@@ -428,15 +379,11 @@ export const useDeleteContribution = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: deleteContribution, // ✅ you need to define this API call
-
+    mutationFn: deleteContribution,
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["goals"] });
-
-      // Snapshot before deletion
       const previousGoals = queryClient.getQueryData(["goals"]);
 
-      // Optimistically update contributions
       queryClient.setQueryData(["goals"], (oldGoals = []) =>
         oldGoals.map((goal) => ({
           ...goal,
@@ -449,16 +396,14 @@ export const useDeleteContribution = () => {
 
       return { previousGoals };
     },
-
     onError: (err, id, context) => {
       if (context?.previousGoals) {
         queryClient.setQueryData(["goals"], context.previousGoals);
       }
     },
-
     onSettled: () => {
-      queryClient.invalidateQueries(["goals"]);
-      queryClient.invalidateQueries(["reports"]);
+      queryClient.invalidateQueries({ queryKey: ["goals"] });
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
     },
   });
 };
@@ -468,32 +413,23 @@ export const useDeleteGoal = () => {
 
   return useMutation({
     mutationFn: deleteGoal,
-
-    // Optimistic update
     onMutate: async (goalId) => {
       await queryClient.cancelQueries({ queryKey: ["goals"] });
-
-      // Snapshot previous goals
       const previousGoals = queryClient.getQueryData(["goals"]);
 
-      // Remove goal immediately from cache
       queryClient.setQueryData(["goals"], (old = []) =>
         old.filter((goal) => goal.id !== goalId)
       );
 
       return { previousGoals };
     },
-
     onError: (err, goalId, context) => {
-      // Revert cache if error
       if (context?.previousGoals) {
         queryClient.setQueryData(["goals"], context.previousGoals);
       }
     },
-
     onSettled: () => {
-      // Refetch to ensure consistency
-      queryClient.invalidateQueries(["goals"]);
+      queryClient.invalidateQueries({ queryKey: ["goals"] });
     },
   });
 };
@@ -503,14 +439,10 @@ export const useChangePassword = () => {
 
   return useMutation({
     mutationFn: changePassword,
-
     onMutate: async (passwordData) => {
-      // Cancel queries if needed
-      await queryClient.cancelQueries(["user"]);
-
+      await queryClient.cancelQueries({ queryKey: ["user"] });
       const previousUser = queryClient.getQueryData(["user"]);
 
-      // Optimistic update: mark user as "updating password"
       if (previousUser) {
         queryClient.setQueryData(["user"], {
           ...previousUser,
@@ -520,15 +452,13 @@ export const useChangePassword = () => {
 
       return { previousUser };
     },
-
     onError: (err, passwordData, context) => {
       if (context?.previousUser) {
         queryClient.setQueryData(["user"], context.previousUser);
       }
     },
-
     onSettled: () => {
-      queryClient.invalidateQueries(["user"]);
+      queryClient.invalidateQueries({ queryKey: ["user"] });
     },
   });
 };
@@ -538,31 +468,24 @@ export const useUpdateProfile = () => {
 
   return useMutation({
     mutationFn: ({ userId, profileData }) => updateProfile(userId, profileData),
-
-    // Optional: Optimistic update
     onMutate: async ({ userId, profileData }) => {
-      await queryClient.cancelQueries(["user", userId]);
-      const previousUser = queryClient.getQueryData(["user", userId]);
+      await queryClient.cancelQueries({ queryKey: ["user"] });
+      const previousUser = queryClient.getQueryData(["user"]);
 
-      queryClient.setQueryData(["user", userId], (old) => ({
+      queryClient.setQueryData(["user"], (old) => ({
         ...old,
         ...profileData,
       }));
 
       return { previousUser };
     },
-
     onError: (err, variables, context) => {
       if (context?.previousUser) {
-        queryClient.setQueryData(
-          ["user", variables.userId],
-          context.previousUser
-        );
+        queryClient.setQueryData(["user"], context.previousUser);
       }
     },
-
     onSettled: (data, error, variables) => {
-      queryClient.invalidateQueries(["user", variables.userId]);
+      queryClient.invalidateQueries({ queryKey: ["user"] });
     },
   });
 };
@@ -572,14 +495,10 @@ export const useUpdateCurrency = () => {
 
   return useMutation({
     mutationFn: updateUserCurrency,
-
     onMutate: async (newCurrency) => {
       await queryClient.cancelQueries({ queryKey: ["user"] });
-
-      // Take a snapshot of current user data
       const previousUser = queryClient.getQueryData(["user"]);
 
-      // Optimistically update user's currency symbol in cache
       queryClient.setQueryData(["user"], (old) => ({
         ...old,
         currency_symbol: newCurrency.currency_symbol,
@@ -587,17 +506,13 @@ export const useUpdateCurrency = () => {
 
       return { previousUser };
     },
-
     onError: (err, newCurrency, context) => {
-      // Rollback on error
       if (context?.previousUser) {
         queryClient.setQueryData(["user"], context.previousUser);
       }
     },
-
     onSettled: () => {
-      // Always refetch the latest user data
-      queryClient.invalidateQueries(["user"]);
+      queryClient.invalidateQueries({ queryKey: ["user"] });
     },
   });
 };

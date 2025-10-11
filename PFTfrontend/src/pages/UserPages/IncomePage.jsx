@@ -96,7 +96,7 @@ export default function IncomePage() {
       confirmButtonText: "Yes, delete it!",
     }).then((result) => {
       if (result.isConfirmed) {
-        deleteTransactionMutation.mutate(txId, {
+        deleteTransactionMutation.mutateAsync(txId, {
           onSuccess: () => {
             Swal.fire("Deleted!", "Transaction has been deleted.", "success");
           },
@@ -122,13 +122,13 @@ export default function IncomePage() {
     };
 
     if (editingId) {
-      await updateTransactionMutation.mutate({
+      await updateTransactionMutation.mutateAsync({
         id: editingId,
         data: payload,
       });
       Swal.fire("Updated!", "Income updated successfully.", "success");
     } else {
-      await addTransactionMutation.mutate(payload);
+      await addTransactionMutation.mutateAsync(payload);
       Swal.fire("Added!", "New income record added.", "success");
     }
 
@@ -217,7 +217,7 @@ export default function IncomePage() {
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
                 onClick={handleOpenModal}
-                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base"
+                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base cursor-pointer"
               >
                 <Plus size={16} className="sm:w-[18px] sm:h-[18px]" />
                 <span className="font-medium">Add Income</span>
@@ -230,7 +230,7 @@ export default function IncomePage() {
                     avgMonthlyIncome,
                   })
                 }
-                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 border-2 border-green-200 text-green-700 rounded-xl shadow-lg hover:shadow-xl hover:bg-emerald-50 transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base"
+                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 border-2 border-green-200 text-green-700 rounded-xl shadow-lg hover:shadow-xl hover:bg-emerald-50 transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base cursor-pointer"
               >
                 <FileDown size={16} className="sm:w-[18px] sm:h-[18px]" />
                 <span className="font-medium">Export</span>
@@ -340,7 +340,7 @@ export default function IncomePage() {
                   <select
                     value={dateFilter}
                     onChange={(e) => setDateFilter(e.target.value)}
-                    className="w-full sm:w-auto border border-gray-200 rounded-lg px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                    className="w-full sm:w-auto border border-gray-200 rounded-lg px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all cursor-pointer"
                   >
                     <option>This Month</option>
                     <option>Last Month</option>
@@ -361,7 +361,7 @@ export default function IncomePage() {
                   <select
                     value={sourceFilter}
                     onChange={(e) => setSourceFilter(e.target.value)}
-                    className="w-full sm:w-auto border border-gray-200 rounded-lg px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                    className="w-full sm:w-auto border border-gray-200 rounded-lg px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all cursor-pointer"
                   >
                     <option>All Sources</option>
                     <option>Salary</option>
@@ -604,14 +604,21 @@ export default function IncomePage() {
 
                       <div className="flex flex-col space-y-1 flex-shrink-0">
                         <button
-                          className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-2 rounded-lg transition-colors
+               text-blue-500 hover:text-blue-700 hover:bg-blue-50
+               disabled:text-gray-400 disabled:bg-gray-200 disabled:cursor-not-allowed"
                           onClick={() => handleEdit(tx)}
+                          disabled={!tx.transaction_id} // add this if you want to disable when no transaction_id
                         >
                           <Edit size={14} />
                         </button>
+
                         <button
-                          className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-2 rounded-lg transition-colors
+               text-red-500 hover:text-red-700 hover:bg-red-50
+               disabled:text-gray-400 disabled:bg-gray-200 disabled:cursor-not-allowed"
                           onClick={() => handleDelete(tx.transaction_id)}
+                          disabled={!tx.transaction_id} // same here
                         >
                           <Trash2 size={14} />
                         </button>

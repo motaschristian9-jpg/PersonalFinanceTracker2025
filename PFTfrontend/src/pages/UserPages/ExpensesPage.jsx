@@ -21,7 +21,12 @@ import {
 import ModalForm from "../../components/ModalForm";
 import { exportExpenseReport } from "../../utils/exportUtils";
 
-import { useAddTransaction, useDeleteTransaction, useUpdateTransaction, useTransactions } from "../../api/queries";
+import {
+  useAddTransaction,
+  useDeleteTransaction,
+  useUpdateTransaction,
+  useTransactions,
+} from "../../api/queries";
 
 import { useCurrency } from "../../context/CurrencyContext"; // ✅ Import context hook
 
@@ -103,7 +108,10 @@ export default function ExpensesPage() {
     };
 
     if (editingId) {
-      await updateTransactionMutation.mutateAsync({ id: editingId, data: payload });
+      await updateTransactionMutation.mutateAsync({
+        id: editingId,
+        data: payload,
+      });
       Swal.fire("Updated!", "Expense updated successfully.", "success");
     } else {
       await addTransactionMutation.mutateAsync(payload);
@@ -190,7 +198,7 @@ export default function ExpensesPage() {
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
                 onClick={handleOpenModal}
-                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base"
+                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base cursor-pointer"
               >
                 <MinusCircle size={16} className="sm:w-[18px] sm:h-[18px]" />
                 <span className="font-medium">Add Expense</span>
@@ -203,7 +211,7 @@ export default function ExpensesPage() {
                     avgMonthlyExpenses,
                   })
                 }
-                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 border-2 border-red-200 text-red-700 rounded-xl shadow-lg hover:shadow-xl hover:bg-red-50 transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base"
+                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 border-2 border-red-200 text-red-700 rounded-xl shadow-lg hover:shadow-xl hover:bg-red-50 transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base cursor-pointer"
               >
                 <FileDown size={16} className="sm:w-[18px] sm:h-[18px]" />
                 <span className="font-medium">Export</span>
@@ -227,7 +235,8 @@ export default function ExpensesPage() {
                   Total Expenses
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-red-600">
-                  {symbol}{totalExpenses.toLocaleString()}
+                  {symbol}
+                  {totalExpenses.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -265,7 +274,8 @@ export default function ExpensesPage() {
                   Avg. Monthly
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-purple-600">
-                  {symbol}{avgMonthlyExpenses.toFixed(2).toLocaleString()}
+                  {symbol}
+                  {avgMonthlyExpenses.toFixed(2).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -311,7 +321,7 @@ export default function ExpensesPage() {
                   <select
                     value={dateFilter}
                     onChange={(e) => setDateFilter(e.target.value)}
-                    className="w-full sm:w-auto border border-gray-200 rounded-lg px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition-all"
+                    className="w-full sm:w-auto border border-gray-200 rounded-lg px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition-all cursor-pointer"
                   >
                     <option>This Month</option>
                     <option>Last Month</option>
@@ -332,7 +342,7 @@ export default function ExpensesPage() {
                   <select
                     value={categoryFilter}
                     onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="w-full sm:w-auto border border-gray-200 rounded-lg px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition-all"
+                    className="w-full sm:w-auto border border-gray-200 rounded-lg px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition-all cursor-pointer"
                   >
                     <option>All Categories</option>
                     <option>Food</option>
@@ -448,20 +458,30 @@ export default function ExpensesPage() {
                         <td className="py-4 px-6 font-bold text-red-600">
                           <div className="flex items-center space-x-1">
                             <TrendingDown size={16} />
-                            <span>-{symbol}{Number(tx.amount).toLocaleString()}</span>
+                            <span>
+                              -{symbol}
+                              {Number(tx.amount).toLocaleString()}
+                            </span>
                           </div>
                         </td>
                         <td className="py-4 px-6 text-right">
                           <div className="flex items-center justify-end space-x-2">
                             <button
-                              className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                              className="p-2 rounded-lg transition-colors
+               text-blue-500 hover:text-blue-700 hover:bg-blue-50
+               disabled:text-gray-400 disabled:bg-gray-200 disabled:cursor-not-allowed cursor-pointer"
                               onClick={() => handleEdit(tx)}
+                              disabled={!tx.transaction_id} // disables button if transaction_id is falsy
                             >
                               <Edit size={16} />
                             </button>
+
                             <button
-                              className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                              className="p-2 rounded-lg transition-colors
+               text-red-500 hover:text-red-700 hover:bg-red-50
+               disabled:text-gray-400 disabled:bg-gray-200 disabled:cursor-not-allowed cursor-pointer"
                               onClick={() => handleDelete(tx.transaction_id)}
+                              disabled={!tx.transaction_id} // disables button if transaction_id is falsy
                             >
                               <Trash2 size={16} />
                             </button>
@@ -545,21 +565,29 @@ export default function ExpensesPage() {
                             </span>
                           </div>
                           <div className="text-lg font-bold text-red-600">
-                            -{symbol}{Number(tx.amount).toLocaleString()}
+                            -{symbol}
+                            {Number(tx.amount).toLocaleString()}
                           </div>
                         </div>
                       </div>
 
                       <div className="flex flex-col space-y-1 flex-shrink-0">
                         <button
-                          className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-2 rounded-lg transition-colors
+               text-blue-500 hover:text-blue-700 hover:bg-blue-50
+               disabled:text-gray-400 disabled:bg-gray-200 disabled:cursor-not-allowed"
                           onClick={() => handleEdit(tx)}
+                          disabled={!tx.transaction_id} // disables button if transaction_id is falsy
                         >
                           <Edit size={14} />
                         </button>
+
                         <button
-                          className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-2 rounded-lg transition-colors
+               text-red-500 hover:text-red-700 hover:bg-red-50
+               disabled:text-gray-400 disabled:bg-gray-200 disabled:cursor-not-allowed"
                           onClick={() => handleDelete(tx.transaction_id)}
+                          disabled={!tx.transaction_id} // disables button if transaction_id is falsy
                         >
                           <Trash2 size={14} />
                         </button>

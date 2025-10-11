@@ -28,24 +28,27 @@ import {
   Edit,
   AlertCircle,
   CheckCircle,
+  Clock,
+  PieChart as PieChartIcon,
 } from "lucide-react";
 import Swal from "sweetalert2";
 import ModalForm from "../../components/ModalForm";
 import BudgetCardModal from "../../components/BudgetCardModal";
-
-import { useOutletContext } from "react-router-dom";
 import {
   useAddBudget,
   useAddExpenseToBudget,
   useDeleteBudget,
   useDeleteTransaction,
   useUpdateBudget,
+  useTransactions,
+  useBudgets,
 } from "../../api/queries";
 
 import { useCurrency } from "../../context/CurrencyContext";
 
 export default function BudgetsPage() {
-  const { transactions, budgets } = useOutletContext();
+  const { data: transactions = [] } = useTransactions();
+    const { data: budgets = [] } = useBudgets();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [formData, setFormData] = useState({});
@@ -64,6 +67,23 @@ export default function BudgetsPage() {
     return transactions
       .filter((tx) => tx.budget_id === budgetId)
       .reduce((sum, tx) => sum + Number(tx.amount), 0);
+  };
+
+  // Helper function to get budget status
+  const getBudgetStatus = (budget) => {
+    const allocated = Number(budget.amount || 0);
+    const spent = budgetSpent(budget.budget_id);
+    const remaining = allocated - spent;
+
+    // Check if budget is completed (spent >= allocated)
+    if (spent >= allocated) return "Completed";
+
+    // Check if behind schedule (end_date passed)
+    const now = new Date();
+    const endDate = budget.end_date ? new Date(budget.end_date) : null;
+    if (endDate && now > endDate && remaining > 0) return "Behind";
+
+    return "On Track";
   };
 
   const chartData = useMemo(() => {
@@ -88,11 +108,9 @@ export default function BudgetsPage() {
     0
   );
   const totalRemaining = totalAllocated - totalSpent;
-  const overBudgetCount = budgets.filter((b) => {
-    const allocated = Number(b.amount || 0);
-    const spent = budgetSpent(b.budget_id);
-    return spent > allocated;
-  }).length;
+  const completedBudgetCount = budgets.filter(
+    (b) => getBudgetStatus(b) === "Completed"
+  ).length;
 
   // Mutations
   const addBudgetMutation = useAddBudget();
@@ -296,7 +314,7 @@ export default function BudgetsPage() {
           <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center space-x-3 sm:space-x-4">
               <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <Target className="text-white" size={20} />
+                <PieChartIcon className="text-white" size={20} />
               </div>
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
@@ -310,7 +328,7 @@ export default function BudgetsPage() {
             <div className="flex justify-end">
               <button
                 onClick={() => handleOpenModal()}
-                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base"
+                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base cursor-pointer"
               >
                 <Plus size={16} className="sm:w-[18px] sm:h-[18px]" />
                 <span className="font-medium">Add Budget</span>
@@ -334,7 +352,8 @@ export default function BudgetsPage() {
                   Total Allocated
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-blue-600">
-                  {symbol}{totalAllocated.toLocaleString()}
+                  {symbol}
+                  {totalAllocated.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -353,7 +372,8 @@ export default function BudgetsPage() {
                   Total Spent
                 </h3>
                 <p className="text-lg sm:text-2xl font-bold text-red-600">
-                  {symbol}{totalSpent.toLocaleString()}
+                  {symbol}
+                  {totalSpent.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -364,19 +384,16 @@ export default function BudgetsPage() {
           <div className="absolute -inset-1 bg-gradient-to-r from-green-200/30 to-green-300/20 rounded-xl blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
           <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-green-100/50 p-4 sm:p-6 hover:shadow-xl transition-shadow">
             <div className="flex items-center space-x-3 sm:space-x-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center">
-                <TrendingUp className="text-white" size={18} />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
+                <Clock className="text-white" size={18} />
               </div>
               <div>
                 <h3 className="text-gray-600 font-medium text-xs sm:text-sm">
                   Remaining
                 </h3>
-                <p
-                  className={`text-lg sm:text-2xl font-bold ${
-                    totalRemaining >= 0 ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  {symbol}{totalRemaining.toLocaleString()}
+                <p className="text-lg sm:text-2xl font-bold text-orange-600">
+                  {symbol}
+                  {totalRemaining.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -384,18 +401,18 @@ export default function BudgetsPage() {
         </div>
 
         <div className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-orange-200/30 to-orange-300/20 rounded-xl blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
-          <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-orange-100/50 p-4 sm:p-6 hover:shadow-xl transition-shadow">
+          <div className="absolute -inset-1 bg-gradient-to-r from-purple-200/30 to-purple-300/20 rounded-xl blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
+          <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-purple-100/50 p-4 sm:p-6 hover:shadow-xl transition-shadow">
             <div className="flex items-center space-x-3 sm:space-x-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
-                <AlertCircle className="text-white" size={18} />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                <CheckCircle className="text-white" size={18} />
               </div>
               <div>
                 <h3 className="text-gray-600 font-medium text-xs sm:text-sm">
-                  Over Budget
+                  Completed
                 </h3>
-                <p className="text-lg sm:text-2xl font-bold text-orange-600">
-                  {overBudgetCount}
+                <p className="text-lg sm:text-2xl font-bold text-blue-600">
+                  {completedBudgetCount}
                 </p>
               </div>
             </div>
@@ -419,7 +436,7 @@ export default function BudgetsPage() {
           {budgets.length === 0 ? (
             <div className="text-center py-12">
               <div className="flex flex-col items-center space-y-3">
-                <Target className="text-gray-300" size={48} />
+                <PieChartIcon className="text-gray-300" size={48} />
                 <span className="text-gray-500 font-medium">
                   No budgets created yet
                 </span>
@@ -428,7 +445,7 @@ export default function BudgetsPage() {
                 </p>
                 <button
                   onClick={() => handleOpenModal()}
-                  className="mt-4 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:shadow-lg transition-all duration-300"
+                  className="mt-4 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:shadow-lg transition-all duration-300 cursor-pointer"
                 >
                   Create Budget
                 </button>
@@ -441,9 +458,16 @@ export default function BudgetsPage() {
                 const allocated = Number(b.amount);
                 const remaining = allocated - spent;
                 const percent = Math.min((spent / allocated) * 100, 100);
-                const isOverBudget = remaining < 0;
-                const statusColor = isOverBudget ? "red" : "green";
-                const status = isOverBudget ? "Over Budget" : "On Track";
+
+                // Get status using the helper function
+                const status = getBudgetStatus(b);
+                const isCompleted = status === "Completed";
+                const isBehind = status === "Behind";
+                const statusColor = isCompleted
+                  ? "green"
+                  : isBehind
+                  ? "red"
+                  : "blue";
 
                 return (
                   <div
@@ -458,7 +482,18 @@ export default function BudgetsPage() {
                     }}
                   >
                     <div className="absolute -inset-1 bg-gradient-to-r from-gray-200/30 to-gray-300/20 rounded-xl blur opacity-0 group-hover:opacity-50 transition-opacity"></div>
-                    <div className="relative bg-white rounded-xl border border-gray-200 p-4 sm:p-6 hover:shadow-lg transition-all duration-300">
+                    <div className="relative bg-white rounded-xl border border-gray-200 p-4 sm:p-6 hover:shadow-lg transition-all duration-300 overflow-hidden">
+                      {/* Colored Accent Top */}
+                      <div
+                        className={`absolute top-0 left-0 right-0 h-1 ${
+                          statusColor === "green"
+                            ? "bg-gradient-to-r from-green-500 to-green-400"
+                            : statusColor === "red"
+                            ? "bg-gradient-to-r from-red-500 to-red-400"
+                            : "bg-gradient-to-r from-blue-500 to-blue-400"
+                        }`}
+                      ></div>
+
                       {/* Budget Header */}
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1 min-w-0">
@@ -470,10 +505,12 @@ export default function BudgetsPage() {
                           </p>
                         </div>
                         <div className="flex items-center space-x-1 ml-2">
-                          {isOverBudget ? (
+                          {isCompleted ? (
+                            <CheckCircle className="text-green-500" size={20} />
+                          ) : isBehind ? (
                             <AlertCircle className="text-red-500" size={20} />
                           ) : (
-                            <CheckCircle className="text-green-500" size={20} />
+                            <Clock className="text-blue-500" size={20} />
                           )}
                         </div>
                       </div>
@@ -506,13 +543,15 @@ export default function BudgetsPage() {
                             Allocated:
                           </span>
                           <span className="font-semibold text-blue-600">
-                            {symbol}{allocated.toLocaleString()}
+                            {symbol}
+                            {allocated.toLocaleString()}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-600">Spent:</span>
                           <span className="font-semibold text-red-600">
-                            {symbol}{spent.toLocaleString()}
+                            {symbol}
+                            {spent.toLocaleString()}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
@@ -521,10 +560,13 @@ export default function BudgetsPage() {
                           </span>
                           <span
                             className={`font-semibold ${
-                              isOverBudget ? "text-red-600" : "text-green-600"
+                              remaining <= 0
+                                ? "text-orange-600"
+                                : "text-orange-600"
                             }`}
                           >
-                            {symbol}{remaining.toLocaleString()}
+                            {symbol}
+                            {Math.max(remaining, 0).toLocaleString()}
                           </span>
                         </div>
                       </div>
@@ -542,7 +584,11 @@ export default function BudgetsPage() {
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
                             className={`h-2 rounded-full transition-all duration-300 ${
-                              isOverBudget ? "bg-red-500" : "bg-blue-500"
+                              statusColor === "green"
+                                ? "bg-green-500"
+                                : statusColor === "red"
+                                ? "bg-red-500"
+                                : "bg-blue-500"
                             }`}
                             style={{ width: `${Math.min(percent, 100)}%` }}
                           ></div>
@@ -555,7 +601,9 @@ export default function BudgetsPage() {
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                             statusColor === "green"
                               ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
+                              : statusColor === "red"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-blue-100 text-blue-800"
                           }`}
                         >
                           {status}
@@ -616,7 +664,12 @@ export default function BudgetsPage() {
                   const allocated = safeNumber(Number(b.amount));
                   const spent = budgetSpent(b.budget_id);
                   const remaining = allocated - spent;
-                  const isOverBudget = remaining < 0;
+
+                  // Get status using helper function
+                  const status = getBudgetStatus(b);
+                  const isCompleted = status === "Completed";
+                  const isBehind = status === "Behind";
+
                   return (
                     <tr
                       key={i}
@@ -633,37 +686,48 @@ export default function BudgetsPage() {
                         </div>
                       </td>
                       <td className="py-4 px-6 font-semibold text-blue-600">
-                        {symbol}{allocated.toLocaleString()}
+                        {symbol}
+                        {allocated.toLocaleString()}
                       </td>
                       <td className="py-4 px-6 font-semibold text-red-600">
-                        {symbol}{spent.toLocaleString()}
+                        {symbol}
+                        {spent.toLocaleString()}
                       </td>
                       <td
                         className={`py-4 px-6 font-semibold ${
-                          isOverBudget ? "text-red-600" : "text-green-600"
+                          remaining <= 0 ? "text-green-600" : "text-orange-600"
                         }`}
                       >
-                        {symbol}{remaining.toLocaleString()}
+                        {symbol}
+                        {Math.max(remaining, 0).toLocaleString()}
                       </td>
                       <td className="py-4 px-6">
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            isOverBudget
+                            isCompleted
+                              ? "bg-green-100 text-green-800"
+                              : isBehind
                               ? "bg-red-100 text-red-800"
-                              : "bg-green-100 text-green-800"
+                              : "bg-blue-100 text-blue-800"
                           }`}
                         >
-                          {isOverBudget ? "Over Budget" : "On Track"}
+                          {status}
                         </span>
                       </td>
                       <td className="py-4 px-6 text-right">
                         <div className="flex items-center justify-end space-x-2">
                           <button
-                            className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
                             onClick={(e) => {
+                              e.preventDefault();
                               e.stopPropagation();
                               handleDelete(b);
                             }}
+                            disabled={!b.budget_id} // disables button if budget_id is missing
+                            className={`p-2 rounded-lg transition-colors ${
+                              !b.budget_id
+                                ? "text-gray-400 bg-gray-100 cursor-not-allowed pointer-events-none opacity-50"
+                                : "text-red-500 hover:text-red-700 hover:bg-red-50 cursor-pointer"
+                            }`}
                           >
                             <Trash2 size={16} />
                           </button>

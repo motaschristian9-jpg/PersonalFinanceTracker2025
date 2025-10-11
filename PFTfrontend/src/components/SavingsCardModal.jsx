@@ -313,7 +313,7 @@ export default function SavingsCardModal({
               <div className="flex items-center space-x-2">
                 <button
                   onClick={handleToggleEditing}
-                  className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all duration-200 text-sm font-medium"
+                  className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all duration-200 text-sm font-medium cursor-pointer select-none"
                 >
                   <Edit size={16} />
                   <span className="hidden sm:inline">
@@ -321,14 +321,24 @@ export default function SavingsCardModal({
                   </span>
                 </button>
                 <button
-                  className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                  onClick={() => onDeleteGoal(localGoal)}
+                  onClick={() => {
+                    if (localGoal?.goal_id) {
+                      onDeleteGoal(localGoal);
+                    }
+                  }}
+                  disabled={!localGoal?.goal_id}
+                  className={`p-2 rounded-lg transition-colors ${
+                    !localGoal?.goal_id
+                      ? "text-gray-400 bg-gray-100 cursor-not-allowed pointer-events-none opacity-50"
+                      : "text-red-500 hover:text-red-700 hover:bg-red-50 cursor-pointer"
+                  }`}
                 >
                   <Trash2 size={16} />
                 </button>
+
                 <button
                   onClick={onClose}
-                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all duration-200"
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all duration-200 cursor-pointer"
                 >
                   <X size={20} />
                 </button>
@@ -539,7 +549,7 @@ export default function SavingsCardModal({
                           className={`px-4 sm:px-6 py-3 rounded-lg flex items-center justify-center space-x-2 font-medium transition-all duration-300 ${
                             !isSavingsAmountValid()
                               ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                              : "bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:shadow-lg transform hover:-translate-y-0.5"
+                              : "bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:shadow-lg transform hover:-translate-y-0.5 cursor-pointer"
                           }`}
                         >
                           <Plus size={16} />

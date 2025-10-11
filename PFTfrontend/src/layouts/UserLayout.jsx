@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { Link, useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrency } from "../context/CurrencyContext";
+import Swal from "sweetalert2";
 
 // Add custom scrollbar styles
 const scrollbarStyles = `
@@ -96,15 +97,35 @@ export default function UserLayout() {
 
   // --- Handle Logout ---
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("user");
+    Swal.fire({
+      title: "Are you sure?",
+      text: "You will be logged out of your account.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#EF4444",
+      cancelButtonColor: "#6B7280",
+      confirmButtonText: "Yes, log out!",
+      cancelButtonText: "Cancel",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        sessionStorage.removeItem("token");
+        sessionStorage.removeItem("user");
 
-    resetCurrency();
-    queryClient.clear();
+        resetCurrency();
+        queryClient.clear();
 
-    window.location.href = "/login";
+        Swal.fire({
+          icon: "success",
+          title: "Logged out!",
+          text: "You have been successfully logged out.",
+          confirmButtonColor: "#10B981",
+        }).then(() => {
+          window.location.href = "/login";
+        });
+      }
+    });
   };
 
   // --- Sidebar toggles ---
@@ -265,21 +286,80 @@ export default function UserLayout() {
   // --- Loading Screen ---
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-white via-green-50 to-green-100 flex items-center justify-center">
-        <div className="relative">
-          <div className="absolute -inset-3 bg-gradient-to-r from-green-200/50 to-green-300/30 rounded-2xl blur opacity-60"></div>
-          <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-green-100 text-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <span className="text-white text-3xl font-bold">M</span>
+      <div className="min-h-screen bg-gradient-to-br from-white via-green-50 to-green-100 flex items-center justify-center p-4">
+        {/* Background decorations */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-green-200/20 to-green-300/10 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-gradient-to-tr from-green-100/30 to-green-200/20 rounded-full blur-2xl"></div>
+        </div>
+
+        <div className="relative w-full max-w-sm">
+          {/* Main card */}
+          <div className="absolute -inset-1 bg-gradient-to-r from-green-200/40 to-green-300/30 rounded-3xl blur-2xl opacity-60 animate-pulse"></div>
+
+          <div className="relative bg-white/95 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-green-100/60">
+            {/* Logo with animation */}
+            <div className="flex justify-center mb-6">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-green-600 rounded-2xl blur-lg opacity-60 animate-pulse"></div>
+                <div className="relative w-20 h-20 bg-gradient-to-r from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <span className="text-white text-4xl font-bold">M</span>
+                </div>
+              </div>
             </div>
-            <h2 className="text-xl font-bold text-gray-800 mb-2">
-              MoneyTracker
-            </h2>
-            <p className="text-gray-600 font-medium">
+
+            {/* Content */}
+            <div className="text-center mb-8">
+              <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent mb-2">
+                MoneyTracker
+              </h2>
+              <p className="text-gray-600 text-sm sm:text-base font-medium">
+                Loading your dashboard
+              </p>
+            </div>
+
+            {/* Loading animation - Multiple dots */}
+            <div className="flex justify-center items-center gap-2 mb-8">
+              <div
+                className="w-2.5 h-2.5 bg-green-500 rounded-full animate-bounce"
+                style={{ animationDelay: "0s" }}
+              ></div>
+              <div
+                className="w-2.5 h-2.5 bg-green-500 rounded-full animate-bounce"
+                style={{ animationDelay: "0.2s" }}
+              ></div>
+              <div
+                className="w-2.5 h-2.5 bg-green-500 rounded-full animate-bounce"
+                style={{ animationDelay: "0.4s" }}
+              ></div>
+            </div>
+
+            {/* Progress bar */}
+            <div className="mb-6">
+              <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full"
+                  style={{
+                    width: "75%",
+                    animation: "shimmer 2s infinite",
+                  }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Loading message */}
+            <p className="text-center text-gray-500 text-xs sm:text-sm">
               Building your path to financial freedom...
             </p>
           </div>
         </div>
+
+        <style>{`
+        @keyframes shimmer {
+          0%, 100% { width: 30%; opacity: 0.5; }
+          50% { width: 100%; opacity: 1; }
+        }
+      `}</style>
       </div>
     );
   }
@@ -320,7 +400,7 @@ export default function UserLayout() {
                   </span>
                   <button
                     onClick={toggleSidebar}
-                    className="p-2 rounded-lg hover:bg-green-50 transition-colors duration-200 text-gray-600 hover:text-green-600"
+                    className="p-2 rounded-lg hover:bg-green-50 transition-colors duration-200 text-gray-600 hover:text-green-600 cursor-pointer"
                   >
                     <ChevronLeft size={18} />
                   </button>
@@ -344,58 +424,83 @@ export default function UserLayout() {
             <nav className="space-y-6 overflow-y-auto h-[calc(100vh-140px)] custom-scrollbar">
               {menuGroups.map((group, groupIdx) => (
                 <div key={groupIdx}>
-                  {sidebarOpen && (
-                    <h3 className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      {group.title}
-                    </h3>
-                  )}
-                  <div className="space-y-2">
-                    {group.items.map((item, itemIdx) => {
-                      const isActive = location.pathname === item.path;
-                      return (
-                        <Link
-                          key={itemIdx}
-                          to={item.path}
-                          className={`group flex items-center ${
-                            sidebarOpen
-                              ? "space-x-3 px-4"
-                              : "justify-center px-3"
-                          } py-3 rounded-xl transition-all duration-200 relative overflow-hidden ${
-                            isActive
-                              ? "bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg"
-                              : "text-gray-700 hover:text-green-600 hover:bg-green-50"
-                          }`}
-                        >
-                          {isActive && (
-                            <div className="absolute inset-0 bg-gradient-to-r from-green-600/90 to-green-700/90"></div>
-                          )}
-                          <div
-                            className={`relative z-10 flex items-center ${
-                              sidebarOpen ? "space-x-3" : ""
-                            }`}
-                          >
-                            <div className={`${isActive ? "text-white" : ""}`}>
-                              {item.icon}
-                            </div>
-                            {sidebarOpen && (
-                              <span
-                                className={`font-medium ${
+                  {sidebarOpen ? (
+                    <>
+                      <h3 className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        {group.title}
+                      </h3>
+                      <div className="space-y-2">
+                        {group.items.map((item, itemIdx) => {
+                          const isActive = location.pathname === item.path;
+                          return (
+                            <Link
+                              key={itemIdx}
+                              to={item.path}
+                              className={`group flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden ${
+                                isActive
+                                  ? "bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg"
+                                  : "text-gray-700 hover:text-green-600 hover:bg-green-50"
+                              }`}
+                            >
+                              {isActive && (
+                                <div className="absolute inset-0 bg-gradient-to-r from-green-600/90 to-green-700/90"></div>
+                              )}
+                              <div className="relative z-10 flex items-center space-x-3">
+                                <div
+                                  className={`${isActive ? "text-white" : ""}`}
+                                >
+                                  {item.icon}
+                                </div>
+                                <span
+                                  className={`font-medium ${
+                                    isActive ? "text-white" : ""
+                                  }`}
+                                >
+                                  {item.label}
+                                </span>
+                              </div>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-center py-2">
+                        <div className="w-8 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+                      </div>
+                      <div className="space-y-2">
+                        {group.items.map((item, itemIdx) => {
+                          const isActive = location.pathname === item.path;
+                          return (
+                            <Link
+                              key={itemIdx}
+                              to={item.path}
+                              className={`group flex items-center justify-center px-3 py-3 rounded-xl transition-all duration-200 relative overflow-hidden ${
+                                isActive
+                                  ? "bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg"
+                                  : "text-gray-700 hover:text-green-600 hover:bg-green-50"
+                              }`}
+                            >
+                              {isActive && (
+                                <div className="absolute inset-0 bg-gradient-to-r from-green-600/90 to-green-700/90"></div>
+                              )}
+                              <div
+                                className={`relative z-10 flex items-center ${
                                   isActive ? "text-white" : ""
                                 }`}
                               >
+                                {item.icon}
+                              </div>
+                              <div className="absolute left-16 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
                                 {item.label}
-                              </span>
-                            )}
-                          </div>
-                          {!sidebarOpen && (
-                            <div className="absolute left-16 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
-                              {item.label}
-                            </div>
-                          )}
-                        </Link>
-                      );
-                    })}
-                  </div>
+                              </div>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
                 </div>
               ))}
             </nav>
@@ -496,7 +601,7 @@ export default function UserLayout() {
                     setNotificationOpen((prev) => !prev);
                     if (!notificationOpen) setHasUnread(false);
                   }}
-                  className="p-2 rounded-lg hover:bg-green-50 transition-colors duration-200 text-gray-600 hover:text-green-600 relative"
+                  className="p-2 rounded-lg hover:bg-green-50 transition-colors duration-200 text-gray-600 hover:text-green-600 relative cursor-pointer"
                 >
                   <Bell size={20} />
                   {hasUnread && (
@@ -550,7 +655,7 @@ export default function UserLayout() {
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="p-2 rounded-lg hover:bg-green-50 transition-colors duration-200"
+                  className="p-2 rounded-lg hover:bg-green-50 transition-colors duration-200 cursor-pointer"
                 >
                   <img
                     src="https://picsum.photos/40"
@@ -572,7 +677,7 @@ export default function UserLayout() {
                     <div className="border-t border-green-100 my-1"></div>
                     <button
                       onClick={handleLogout}
-                      className="flex items-center space-x-3 px-4 py-3 hover:bg-red-50 transition-colors duration-200 text-red-600 hover:text-red-700 w-full text-left"
+                      className="flex items-center space-x-3 px-4 py-3 hover:bg-red-50 transition-colors duration-200 text-red-600 hover:text-red-700 w-full text-left cursor-pointer"
                     >
                       <LogOut size={16} />
                       <span className="font-medium">Log Out</span>

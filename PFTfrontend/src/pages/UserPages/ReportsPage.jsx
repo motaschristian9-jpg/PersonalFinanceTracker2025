@@ -1,7 +1,4 @@
 import React, { useState } from "react";
-import { Card } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
-import { Progress } from "../../components/ui/progress";
 
 import {
   PieChart,
@@ -28,8 +25,8 @@ import {
   BarChart3,
   FileText,
   FileDown,
+  PieChart as PieChartIcon,
 } from "lucide-react";
-import { Link, useOutletContext } from "react-router-dom";
 
 import { useCurrency } from "../../context/CurrencyContext";
 import {
@@ -37,6 +34,10 @@ import {
   exportExpenseReport,
   exportFullReport,
 } from "../../utils/exportUtils";
+
+import { useTransactions,
+  useBudgets,
+  useGoals,} from "../../api/queries";
 
 // ===================================================================
 // Helper Functions
@@ -100,7 +101,9 @@ const CustomLineTooltip = ({ active, payload, label }) => {
 // Main Component
 // ===================================================================
 const ReportsPage = () => {
-  const { user, transactions, budgets, goals, reports } = useOutletContext();
+  const { data: transactions = [] } = useTransactions();
+    const { data: budgets = [] } = useBudgets();
+    const { data: goals = [] } = useGoals();
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [appliedRange, setAppliedRange] = useState({ from: "", to: "" });
@@ -420,7 +423,7 @@ const ReportsPage = () => {
         <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-purple-100/50 p-4 sm:p-6 lg:p-8">
           <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center space-x-3 sm:space-x-4">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
                 <BarChart3 className="text-white" size={20} />
               </div>
               <div>
@@ -435,7 +438,7 @@ const ReportsPage = () => {
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
               <button
                 onClick={() => handleExport("Full Report")}
-                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 border-2 border-purple-200 text-purple-700 rounded-xl shadow-lg hover:shadow-xl hover:bg-purple-50 transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base"
+                className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 border-2 border-orange-200 text-orange-700 rounded-xl shadow-lg hover:shadow-xl hover:bg-orange-50 transform hover:-translate-y-0.5 transition-all duration-300 text-sm sm:text-base cursor-pointer"
               >
                 <FileDown size={16} className="sm:w-[18px] sm:h-[18px]" />
                 <span className="font-medium">Export Full Report</span>
@@ -451,7 +454,7 @@ const ReportsPage = () => {
         <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-blue-100/50 p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
             <h3 className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
-              <Calendar size={18} className="text-blue-600" />
+              <Calendar size={18} className="text--600" />
               <span>Report Period</span>
             </h3>
             <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
@@ -474,7 +477,7 @@ const ReportsPage = () => {
               </div>
               <button
                 onClick={handleApplyFilter}
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:shadow-lg transition-all duration-300 text-sm hover:from-blue-700 hover:to-blue-800"
+                className="px-4 py-2 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-lg hover:shadow-lg transition-all duration-300 text-sm hover:from-orange-700 hover:to-orange-800 cursor-pointer"
               >
                 Apply Filter
               </button>
@@ -667,7 +670,7 @@ const ReportsPage = () => {
         <div className="absolute -inset-1 bg-gradient-to-r from-green-200/30 to-green-300/20 rounded-xl blur opacity-40"></div>
         <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-green-100/50 p-4 sm:p-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center space-x-2">
-            <Target size={18} className="text-green-600" />
+            <PieChartIcon size={18} className="text-green-600" />
             <span>Budget Utilization</span>
           </h3>
           <div className="space-y-6">
@@ -736,7 +739,7 @@ const ReportsPage = () => {
               </div>
               <button
                 onClick={() => handleExport("Income")}
-                className="text-green-600 hover:text-green-700 transition-colors p-2 rounded-lg hover:bg-green-50 text-sm flex items-center space-x-1"
+                className="text-green-600 hover:text-green-700 transition-colors p-2 rounded-lg hover:bg-green-50 text-sm flex items-center space-x-1 cursor-pointer"
               >
                 <FileDown size={14} />
                 <span>Export</span>
@@ -816,7 +819,7 @@ const ReportsPage = () => {
               </div>
               <button
                 onClick={() => handleExport("Expense")}
-                className="text-red-600 hover:text-red-700 transition-colors p-2 rounded-lg hover:bg-red-50 text-sm flex items-center space-x-1"
+                className="text-red-600 hover:text-red-700 transition-colors p-2 rounded-lg hover:bg-red-50 text-sm flex items-center space-x-1 cursor-pointer"
               >
                 <FileDown size={14} />
                 <span>Export</span>

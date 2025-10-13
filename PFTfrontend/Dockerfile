@@ -1,23 +1,46 @@
-# Use Node.js 20 Alpine
-FROM node:20-alpine
+# ---------- Stage 1: Build Frontend ----------
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# Copy package files and install dependencies
+# Copy package files
 COPY package*.json ./
+
+# Install dependencies - use npm install (no lockfile required)
 RUN npm install
 
-# Copy all other files
+# Copy source files
 COPY . .
 
-# Build the React app
+# Build production assets
 RUN npm run build
 
-# Install 'serve' globally to serve static files
-RUN npm install -g serve
 
-# Expose frontend port
-EXPOSE 3000
+# ---------- Stage 2: Serve with Nginx ----------
+FROM nginx:stable-alpine AS runtime
 
-# Start the app
-CMD ["serve", "-s", "build", "-l", "3000"]
+# Clean default Nginx HTML directory
+RUN rm -rf /usr/share/nginx/html/*
+
+# Copy built frontend from build stage
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# Create Nginx config for SPA routing
+RUN echo 'server { \
+    listen 80; \
+    server_name _; \
+    root /usr/share/nginx/html; \
+    index index.html; \
+    \
+    location / { \
+        try_files $uri $uri/ /index.html; \
+    } \
+    \
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ { \
+        expires 1y; \
+        add_header Cache-Control "public, immutable"; \
+    } \
+}' > /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

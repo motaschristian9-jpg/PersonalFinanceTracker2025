@@ -1,26 +1,59 @@
-# PFTbackend/Dockerfile
-FROM php:8.2-fpm
+# ---------- Stage 1: Composer Dependencies ----------
+FROM php:8.2-fpm-alpine AS vendor
 
-# system deps and php extensions
-RUN apt-get update && apt-get install -y \
-    git unzip libzip-dev libpng-dev libonig-dev libxml2-dev curl \
-    && docker-php-ext-install pdo pdo_mysql zip mbstring exif pcntl bcmath
+# Install PHP extensions and Composer
+RUN apk add --no-cache git unzip libzip-dev curl bash \
+    && docker-php-ext-install zip pdo pdo_mysql \
+    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# install composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+WORKDIR /app
+
+# Copy all source files first (artisan needed for post-autoload scripts)
+COPY . .
+
+# Install dependencies (production only)
+RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+
+# ---------- Stage 2: Node Build for Frontend (Vite) ----------
+FROM node:20-alpine AS frontend
+
+WORKDIR /app
+
+# Copy package files first
+COPY package*.json ./
+
+# Install dependencies (use npm install instead of npm ci)
+RUN npm install
+
+# Copy source files for frontend build
+COPY . .
+
+# Build assets
+RUN npm run build
+
+
+# ---------- Stage 3: Runtime PHP-FPM ----------
+FROM php:8.2-fpm-alpine AS runtime
+
+# Install required PHP extensions and system packages
+RUN apk add --no-cache \
+    git unzip libzip-dev libpng-dev libxml2-dev curl oniguruma-dev bash \
+    && docker-php-ext-install pdo pdo_mysql zip bcmath \
+    && rm -rf /var/cache/apk/*
 
 WORKDIR /var/www/html
 
-# copy composer files first for caching (optional)
-COPY composer.json composer.lock* ./
+# Copy Laravel app with vendor dependencies
+COPY --from=vendor /app ./
 
-# copy app
-COPY . .
+# Copy built frontend assets from Node stage
+COPY --from=frontend /app/public/build ./public/build
 
-# permissions
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# Fix permissions for Laravel writable directories
+RUN chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
-# expose php-fpm port
 EXPOSE 9000
 
 CMD ["php-fpm"]
